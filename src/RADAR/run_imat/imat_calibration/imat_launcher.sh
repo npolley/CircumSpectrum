@@ -8,10 +8,24 @@ CORES="$5"
 
 module load statistics/R/4.3.0
 
-N=$(Rscript -e "dim(read.csv('../../../../data/imat_prep_RNAseq/${ASSAY}_names.csv'))[1]")
+# Number of array tasks from the *_names.csv file
+N=$(Rscript -e "cat(dim(read.csv('../../../../data/imat_prep_RNAseq/${ASSAY}_names.csv'))[1])")
 
-sbatch --array=1-"$N" \
+echo "Array size N = $N"
+# Submit the main array job and capture its ID
+ARRAY_JOBID=$(sbatch --parsable \
+  --array=1-"$N" \
   --cpus-per-task="${CORES}" \
   --job-name="${ASSAY}" \
-  --output="${ASSAY}.out" \
-  imat_slurm.sh "$ASSAY" "$MEDIUM" "$MODEL" "$N_SIMS" "$CORES" 
+  --output=logs/%x_%A_%a.out \
+  --error=logs/%x_%A_%a.err \
+  imat_slurm.sh "$ASSAY" "$MEDIUM" "$MODEL" "$N_SIMS" "$CORES")
+
+echo "Submitted array job: ${ARRAY_JOBID}"
+
+# OPTIONAL: follow-up job that runs ONLY if all array tasks succeed
+# Uncomment and adapt if needed.
+FOLLOW_JOBID=$(sbatch --parsable \
+   --dependency=afterok:${ARRAY_JOBID} \
+   aggregate_fluxes_launcher.sh "$ASSAY" "$MODEL")
+echo "Submitted follow-up job (afterok): ${FOLLOW_JOBID}"
