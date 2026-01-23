@@ -51,6 +51,6 @@ User-defined thresholds for minimum AUC, minimum log2FC, and maximum FDR control
 
 ### Outputs and export
 
-- Download filtered reaction fingerprints (reaction-level stats and metadata) as an RDS object.  
+- Download filtered reaction fingerprint preparation files (reaction-level stats and metadata) as an RDS object.  
 - Download publication-ready PDFs of subsystem and detailed plots.  
 - Tabular summary of selected reactions and their annotations via `reactable`.
