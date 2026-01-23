@@ -30,7 +30,7 @@ RADAR | xCheck is an R Shiny dashboard for interactive exploration of iMAT flux 
 ### Two-level comparison design
 
 - **Outer comparison**: defines “upper” vs “lower” groups (e.g. high vs low risk), based on selected variables and dichotomization rules.  
-- **Inner comparison**: defines subgroups within the stratified cohort (e.g. high/baseline/low gene expression or clinical bins).
+- **Inner comparison (optional)**: defines subgroups within the stratified cohort (e.g. high/baseline/low gene expression or clinical bins).
 
 ### Statistical workflow
 
