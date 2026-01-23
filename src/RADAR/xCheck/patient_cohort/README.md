@@ -2,7 +2,7 @@
 
 RADAR | xCheck is an R Shiny dashboard for interactive exploration of iMAT flux output across multiple patient cohorts. The app lets you:
 
-- Select a cohort (e.g. BEATAML2.0 AML, TCGA PDAC, glioblastoma) from a registry file.
+- Select a cohort (e.g. BEATAML2.0 AML, TCGA PDAC) from a registry file.
 - Dynamically Add customizable cohorts and stratification parameters.
 - Optionally stratify patients by clinical variables or gene expression into two- or three-class groups.  
 - Define an outer comparison (upper vs lower groups) and an inner comparison (subgroups) to compute AUC, log2FC, and differential flux statistics.  
