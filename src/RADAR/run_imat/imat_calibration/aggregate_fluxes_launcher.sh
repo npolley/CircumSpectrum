@@ -8,5 +8,5 @@ MODEL="$2"
 
 module load statistics/R/4.3.0
 
-Rscript aggregate_fluxes.R "ASSAY" "MODEL"
+Rscript aggregate_fluxes.R "$ASSAY" "$MODEL"
 

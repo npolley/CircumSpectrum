@@ -4,19 +4,19 @@
 # If whiptail is not available, you can swap it with dialog and adjust options.
 
 
-ASSAY_DIR="../../../../../data/norm_RNAseq"
+ASSAY_DIR="../../../../../data/sc_objects"
 
 # Get unique filenames matching *_norm.csv
-mapfile -t files < <(find "$ASSAY_DIR" -maxdepth 1 -type f -name "*_norm.csv" -printf "%f\n" | sort -u)
+mapfile -t files < <(find "$ASSAY_DIR" -maxdepth 1 -type f -name "*.rds" -printf "%f\n" | sort -u)
 
 if [ ${#files[@]} -eq 0 ]; then
-  echo "No *_norm.csv files found in $ASSAY_DIR"
+  echo "No *.rds files found in $ASSAY_DIR"
   exit 1
 fi
 
 MENU_ITEMS=()
 for f in "${files[@]}"; do
-  base="${f%_norm.csv}"      # strip suffix
+  base="${f%.rds}"      # strip suffix
   MENU_ITEMS+=("$base" "")  # only show the base; empty description
 done
 
@@ -43,10 +43,18 @@ if [ $exitstatus -ne 0 ]; then
   exit 1
 fi
 
+# -------- RESOLUTION (numeric input, default 40) --------
+RES=$(whiptail --inputbox "Enter microclustering resolution (default 40):" 10 60 "40" 3>&1 1>&2 2>&3)
+exitstatus=$?
+if [ $exitstatus -ne 0 ]; then
+  echo "Cancelled."
+  exit 1
+fi
 
 # -------- Confirm and run --------
 SUMMARY="ASSAY:  $ASSAY
 MODEL:  $MODEL
+RESOLUTION:  $RES
 
 
 Run expr_2_imat_launcher.sh with these parameters?"
@@ -59,5 +67,5 @@ if [ $exitstatus -ne 0 ]; then
 fi
 
 # Call your existing launcher
-echo "Running: Rscript expr_2_imat.R \"$ASSAY\" \"$MODEL\""
-Rscript expr_2_imat.R "$ASSAY" "$MODEL"
+echo "Running: bash expr_2_imat_sc_launcher.sh \"$ASSAY\" \"$MODEL\" \"$RES\""
+Rscript expr_2_imat_sc.R "$ASSAY" "$MODEL" "$RES"
