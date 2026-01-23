@@ -7,7 +7,7 @@ RADAR | xCheck is an R Shiny dashboard for interactive exploration of iMAT flux 
 - Optionally stratify patients by clinical variables or gene expression into two- or three-class groups.  
 - Define an outer comparison (upper vs lower groups) and an inner comparison (subgroups) to compute AUC, log2FC, and differential flux statistics.  
 - Visualize significant reactions across metabolic subsystems and drill down to reaction-level and flux-distribution views.  
-- Export filtered reaction fingerprints and plots for downstream analysis and reporting.
+- Export filtered reaction fingerprint preparation objects and plots for downstream analysis and reporting.
 
 ---
 
