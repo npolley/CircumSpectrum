@@ -2,48 +2,433 @@ library(pROC)
 library(caTools)
 library(matrixTests)
 library(ggplot2)
+library(plotly)
 library(shinydashboard)
 library(stringr)
 library(reactable)
 library(shinycustomloader)
 library(cowplot)
 library(shinyWidgets)
+library(cicerone) 
 library(rlist)
 library(funprog)
 library(data.table)
 library(MatrixGenerics)
-
 
 reactMeta<-read.csv("../../../../data/RADAR_xCheck_cohort/human_reaction_meta.csv")
 colnames(reactMeta)[1]<-"metabolite"
 
 cohort_registry <- read.csv("../../../../data/RADAR_xCheck_cohort/xCheck_cohort_registry.csv", stringsAsFactors = FALSE)
 
-# beataml_flux<-as.data.frame(as.matrix(fread("beataml2_flux.csv"), rownames = 1))
-# beataml_gene<-as.data.frame(as.matrix(fread("beataml2_norm_filtered.csv"), rownames = 1))
-# beataml_clinical<-read.csv("beataml2_clinical.csv", header = T, row.names = 1)
-# beataml_meta_clinical<-read.csv("beataml2_meta_clinical.csv", header = T)
-# 
-# pdac_tcga_flux<-as.data.frame(as.matrix(fread("pdac_tcga_flux.csv"), rownames = 1))
-# pdac_tcga_gene<-as.data.frame(as.matrix(fread("pdac_tcga_norm_filtered.csv", header = TRUE), rownames = 1))
-# pdac_tcga_clinical<-read.csv("pdac_tcga_clinical.csv", header = T, row.names = 1)
-# pdac_tcga_meta_clinical<-read.csv("pdac_tcga_meta_clinical.csv", header = T)
-# 
-# glio_flux<-as.data.frame(as.matrix(fread("glioblastoma_flux.csv"), rownames = 1))
-# glio_gene<-as.data.frame(as.matrix(fread("glioblastoma_norm_filtered.csv", header = TRUE), rownames = 1))
-# glio_clinical<-read.csv("glioblastoma_clinical.csv", header = T, row.names = 1)
-# glio_meta_clinical<-read.csv("glioblastoma_meta_clinical.csv", header = T)
-
-#Assign categories to be compared
-
 header <- dashboardHeader(
-  title = "RADAR | xCheck",
-  titleWidth = 400 
+  title = "RADAR | xCheck (for observational studies)",
+  titleWidth = 600
 )
 
 body <- dashboardBody(
+  tags$head(
+    tags$style(HTML("
+    #global-loading-text {
+      color: #e0e7ff; /* bright, cool lavender-blue */
+      font-size: 2rem;
+      letter-spacing: 0.03em;
+      text-shadow:
+        0 0 4px rgba(129, 140, 248, 0.8),
+        0 0 10px rgba(167, 139, 250, 0.7);
+    }
+  ")),
+    tags$style(HTML("
+    #global-loading-overlay.loading-overlay {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(
+          circle at top,
+          rgba(16, 19, 34, 0.45),
+          rgba(5, 7, 18, 0.35) 60%,
+          rgba(2, 3, 9, 0.25) 100%
+        );
+      z-index: 9999;
+    }
+
+    .loading-core {
+      display: flex;
+      flex-direction: column;   /* stack logo above text */
+      align-items: center;      /* center horizontally */
+      justify-content: center;  /* center vertically within overlay */
+      text-align: center;
+      gap: 0.75rem;
+      position: relative;
+      z-index: 2;
+    }
+
+    ..sparkles {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+      z-index: 1;
+    }
+
+    .sparkle {
+      position: absolute;
+      border-radius: 999px;
+      background: radial-gradient(circle, #ffffff, #a78bfa);
+      box-shadow:
+        0 0 8px rgba(129, 140, 248, 0.9),
+        0 0 18px rgba(167, 139, 250, 0.8);
+      opacity: 0;
+      animation: sparkleTwinkle 2.8s ease-in-out infinite;
+    }
+
+    @keyframes sparkleTwinkle {
+      0%, 100% {
+        opacity: 0;
+        transform: scale(0.3);
+      }
+      35% {
+        opacity: 1;
+        transform: scale(1);
+      }
+      70% {
+        opacity: 0.2;
+        transform: scale(0.4);
+      }
+    }
+
+    .sparkle:nth-child(1)  { top: 8%;   left: 12%; width: 6px;  height: 6px;  animation-delay: 0.1s; }
+    .sparkle:nth-child(2)  { top: 22%;  left: 78%; width: 7px;  height: 7px;  animation-delay: 0.5s; }
+    .sparkle:nth-child(3)  { top: 40%;  left: 18%; width: 5px;  height: 5px;  animation-delay: 0.9s; }
+    .sparkle:nth-child(4)  { top: 68%;  left: 30%; width: 8px;  height: 8px;  animation-delay: 1.3s; }
+    .sparkle:nth-child(5)  { top: 82%;  left: 70%; width: 6px;  height: 6px;  animation-delay: 1.7s; }
+    .sparkle:nth-child(6)  { top: 15%;  left: 50%; width: 9px;  height: 9px;  animation-delay: 0.3s; }
+    .sparkle:nth-child(7)  { top: 30%;  left: 35%; width: 4px;  height: 4px;  animation-delay: 0.8s; }
+    .sparkle:nth-child(8)  { top: 55%;  left: 85%; width: 7px;  height: 7px;  animation-delay: 1.1s; }
+    .sparkle:nth-child(9)  { top: 73%;  left: 12%; width: 10px; height: 10px; animation-delay: 1.6s; }
+    .sparkle:nth-child(10) { top: 10%;  left: 88%; width: 5px;  height: 5px;  animation-delay: 0.7s; }
+    .sparkle:nth-child(11) { top: 48%;  left: 60%; width: 9px;  height: 9px;  animation-delay: 1.0s; }
+    .sparkle:nth-child(12) { top: 33%;  left: 5%;  width: 6px;  height: 6px;  animation-delay: 1.4s; }
+    .sparkle:nth-child(13) { top: 63%;  left: 48%; width: 8px;  height: 8px;  animation-delay: 1.8s; }
+    .sparkle:nth-child(14) { top: 25%;  left: 92%; width: 4px;  height: 4px;  animation-delay: 0.2s; }
+    .sparkle:nth-child(15) { top: 88%;  left: 40%; width: 9px;  height: 9px;  animation-delay: 1.9s; }
+    .sparkle:nth-child(16) { top: 5%;   left: 30%; width: 7px;  height: 7px;  animation-delay: 0.4s; }
+    .sparkle:nth-child(17) { top: 52%;  left: 8%;  width: 6px;  height: 6px;  animation-delay: 1.2s; }
+    .sparkle:nth-child(18) { top: 60%;  left: 92%; width: 10px; height: 10px; animation-delay: 1.5s; }
+    .sparkle:nth-child(19) { top: 18%;  left: 65%; width: 5px;  height: 5px;  animation-delay: 0.6s; }
+    .sparkle:nth-child(20) { top: 78%;  left: 55%; width: 8px;  height: 8px;  animation-delay: 1.1s; }
+  ")),
+    tags$style(HTML("
+  .btn {
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 5px 14px;
+  }
+  .btn-primary {
+    background-color: var(--radar-primary);
+    border-color: var(--radar-primary);
+  }
+  .btn-primary:hover, .btn-primary:focus {
+    background-color: var(--radar-primary-dark);
+    border-color: var(--radar-primary-dark);
+  }
+")),
+    tags$style(HTML("
+  .form-group {
+    margin-bottom: 10px;
+  }
+  .control-label {
+    font-weight: 500;
+    font-size: 12px;
+    color: #5f6473;
+  }
+  .selectize-control.single .selectize-input,
+  .vscomp-toggle-button {
+    border-radius: 6px;
+    border-color: #d3d7e5;
+    min-height: 32px;
+  }
+")),
+    tags$style(HTML("
+  body, .content-wrapper, .box-title, .sidebar-menu > li > a {
+    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  }
+  .box-title {
+    font-weight: 500;
+    font-size: 15px;
+  }
+  .main-header .logo {
+    font-size: 18px;
+    letter-spacing: 0.03em;
+  }
+")),
+    tags$style(HTML("
+  .content-wrapper, .right-side {
+    background-color: #f5f6fa;
+  }
+")),
+    tags$style(HTML("
+    .box {
+    border-radius: 10px;
+    border: 1px solid #e0e4f0;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+    overflow: visible;  /* keep dropdowns visible */
+  }
+
+  .box-header {
+    border-bottom: 1px solid #e0e4f0;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    background-clip: padding-box;
+  }
+
+  .box-body {
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+    background-clip: padding-box;
+  }
+")),
+    tags$style(HTML("
+    :root {
+      --radar-primary: #5c6bc0;      /* solid purple */
+      --radar-primary-dark: #3f51b5; /* hover */
+    }
+
+    /* Primary boxes (status = 'primary') */
+    .skin-purple .box.box-primary {
+      border-top-color: var(--radar-primary);
+    }
+    .skin-purple .box.box-primary > .box-header {
+      background-color: var(--radar-primary);
+      color: #ffffff;
+    }
+    .skin-purple .box.box-primary > .box-header .box-title {
+      color: #ffffff;
+    }
+    .skin-purple .box.box-primary > .box-body {
+      background-color: #ffffff;
+      color: #283046;
+    }
+
+    /* Primary buttons */
+    .skin-purple .btn-primary {
+      background-color: var(--radar-primary);
+      border-color: var(--radar-primary);
+    }
+    .skin-purple .btn-primary:hover,
+    .skin-purple .btn-primary:focus {
+      background-color: var(--radar-primary-dark);
+      border-color: var(--radar-primary-dark);
+    }
+  ")),
+      tags$link(
+        rel = "stylesheet",
+        href = "https://fonts.googleapis.com/css2?family=Poppins:wght@500;600&display=swap"
+      ),
+      tags$style(HTML("
+    .skin-purple .main-header .logo {
+      font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+                   Roboto, 'Helvetica Neue', Arial, sans-serif;
+      font-weight: 600;
+      font-size: 100px;
+      letter-spacing: 0.03em;
+    }
+  ")),
+    # Global styles (loader + fade-in)
+    tags$style(HTML("
+  /* Apply gradient only to the navbar bar across the page */
+  .skin-purple .main-header .navbar {
+    background: linear-gradient(135deg, #8e24aa, #3f51b5, #29b6f6);
+    border: none;
+  }
+
+  /* Make the logo tile a flat color that matches the gradient at the left */
+  .skin-purple .main-header .logo {
+    background-color: #8e24aa;
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 17px;
+    border: none;
+  }
+
+  .skin-purple .main-header .logo:hover {
+    background-color: #7b1fa2;
+  }
+
+  .box.box-primary {
+    border-top-color = #8e24aa;
+  }
+  .box.box-primary > .box-header {
+    background: #ffffff;
+    color: #333;
+  }
+")),
+    tags$style(HTML("
+      .loading-overlay {
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(255,255,255,0.85);
+        z-index: 3000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        font-size: 18px;
+        color: #555;
+      }
+ .loading-logo {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    border-radius: 24px;
+    background: linear-gradient(135deg, #8e24aa, #3f51b5, #29b6f6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  }
+
+  .loading-logo svg {
+      display: block;
+      width: 72px;
+      height: 72px;
+      margin: 0 auto;           /* ensure center in its div */
+    }
+
+  .hex-spiral {
+    fill: none;
+    stroke: #ffffff;
+    stroke-width: 4.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 260;
+    stroke-dashoffset: 260;
+    animation: drawHexSpiral 1.5s ease-in-out infinite;
+  }
+
+  @keyframes drawHexSpiral {
+    0%   { stroke-dashoffset: 260; opacity: 0.0; }
+    10%  { opacity: 1.0; }
+    65%  { stroke-dashoffset: 0;   opacity: 1.0; }
+    100% { stroke-dashoffset: 0;   opacity: 0.0; }
+  }
+
+      /* Fade-in animation for panels */
+      .fade-in-panel {
+        animation: fadeInPanel 0.4s ease-in-out;
+      }
+      @keyframes fadeInPanel {
+        from { opacity: 0; transform: translateY(4px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+
+      /* Dropdowns above normal content */
+      .vscomp-wrapper,
+      .vscomp-wrapper .vscomp-dropdown {
+        z-index: 2000 !important;
+      }
+      .selectize-control .selectize-dropdown {
+        z-index: 2000 !important;
+      }
+
+      /* (optional) disable pointer events class if you use it elsewhere */
+      .radar-loading-disabled {
+        pointer-events: none !important;
+      }
+    ")),
+    
+    # Loader + fade-in JS handlers
+    tags$script(HTML("
+      Shiny.addCustomMessageHandler('toggle-loading', function(show) {
+        var overlay = document.getElementById('global-loading-overlay');
+        if (overlay) {
+          overlay.style.display = show ? 'flex' : 'none';
+        }
+      });
+
+      Shiny.addCustomMessageHandler('loading-text', function(msg) {
+        var el = document.getElementById('global-loading-text');
+        if (!el) return;
+        el.textContent = msg;
+      });
+
+      // Fade-in any box containing an updated output
+      $(document).on('shiny:value', function(e) {
+        var $box = $('#' + e.target.id).closest('.box');
+        if ($box.length) {
+          $box.addClass('fade-in-panel');
+          setTimeout(function() {
+            $box.removeClass('fade-in-panel');
+          }, 500);
+        }
+      });
+    ")),
+    
+    # Highlight subsystem handler (plot1 tick bold)
+    tags$script(HTML("
+      Shiny.addCustomMessageHandler('highlight-subsystem', function(idx) {
+        var ticks = $('.shiny-plot-output#plot1').find('text');
+        ticks.css('font-weight', 'normal');
+        if (idx > 0 && idx <= ticks.length) {
+          $(ticks[idx-1]).css('font-weight', 'bold');
+        }
+      });
+    "))
+  ),
+  
+  # Full-page overlay element
+  tags$div(
+    id = "global-loading-overlay",
+    class = "loading-overlay",
+    
+    tags$div(
+      class = "loading-core",
+      # logo on top
+      tags$div(
+        class = "loading-logo",
+        tags$svg(
+          viewBox = "0 0 100 100",
+          tags$path(
+            class = "hex-spiral",
+            d = paste(
+              "M 50 14",
+              "L 78 30",
+              "L 78 56",
+              "L 50 74",
+              "L 22 56",
+              "L 22 30",
+              "L 46 22",
+              "L 70 34",
+              "L 70 52",
+              "L 50 64",
+              "L 30 52",
+              "L 30 34",
+              "L 50 26",
+              "L 62 38",
+              "L 62 48",
+              "L 50 54",
+              sep = " "
+            )
+          )
+        )
+      ),
+      # text under logo
+      tags$div(
+        id = "global-loading-text",
+        "Preparing RADAR | xCheck analysis…"
+      )
+    ),
+    
+    tags$div(
+      class = "sparkles",
+      lapply(1:20, function(i) tags$span(class = "sparkle"))
+    )
+  ),
   
   fluidRow(
+    style = "margin-top: 10px;",
     column(
       width = 12,
       box(
@@ -54,7 +439,7 @@ body <- dashboardBody(
           width = 4,
           selectInput(
             label   = "Select Cohort",
-            inputId = "cohort",
+            inputId = "cohort_select",
             # value = folder_name, label = "cohort_name - disease"
             choices = stats::setNames(
               cohort_registry$folder_name,
@@ -68,6 +453,7 @@ body <- dashboardBody(
   ),
   
   fluidRow(
+    style = "margin-top: 10px;",
     column(
       width = 12,
       box(
@@ -120,6 +506,7 @@ body <- dashboardBody(
         
         # Info text + submit button
         fluidRow(
+          style = "margin-top: 10px;",
           column(
             width = 8,
             tags$div(
@@ -141,19 +528,21 @@ body <- dashboardBody(
     )
   ),
   
-  fluidRow(column(width=8,box(title=textOutput("plot1Title"),
-                              width = 12, solidHeader = TRUE, status="primary",withLoader(plotOutput("plot1", click = "clickBar", height = 500), type = "html", loader = "dnaspin"),
-                              downloadLink("dlPlot1", "Download Plot as PDF | "),downloadLink("reacts", "Download Fingerprint Data")),
-  ), 
-  column(width=4,box(title=textOutput("plot2Title"),
-                     width = 12, solidHeader = TRUE, status="primary", withLoader(plotOutput("plot2", brush = "plot_brush2", height = 500), type = "html", loader = "dnaspin"),
-                     downloadLink("dlPlot2", "Download Plot as PDF")))),
-  fluidRow(column(width=8,box(title=textOutput("outerTitle"), solidHeader = TRUE,status="primary",checkboxGroupInput("outerSelect", label = NULL, choices = c("Significant (+)"="up","Not Signficant"="ns","Significant (-)"="down"), selected=c("up","ns","down"))),box(title=textOutput("innerTitle"), solidHeader = TRUE, status="primary",checkboxGroupInput("innerSelect", label = NULL, choices = c("high","baseline","low"))))),
-  fluidRow(column(width=12,box(width=12,selectizeInput("boxplot", "Select Metabolic Flux to Analyze", choices = c(""))))),
+  fluidRow(style = "margin-top: 10px;",column(width=12,box(
+    width = 12, status = "primary", solidHeader = TRUE,
+    title = textOutput("plot1Title"),
+    plotlyOutput("plot1", height = 650),
+    downloadLink("dlPlot1", "Download Plot as PDF | "),
+    downloadLink("reacts", "Download Fingerprint Data")
+  )) 
+  ),
+  fluidRow(column(width=8,box(title=textOutput("outerTitle"), solidHeader = TRUE,status="primary",checkboxGroupInput("outerSelect", label = NULL, choices = c(), selected=NULL)),box(title=textOutput("innerTitle"), solidHeader = TRUE, status="primary",checkboxGroupInput("innerSelect", label = NULL, choices = c("high","baseline","low"))))),
+  fluidRow(column(style = "display:none;",width=12,box(width=12,selectizeInput("boxplot", "Select Metabolic Flux to Analyze", choices = c(""))))),
   fluidRow(column(width=12,box(width=12,reactableOutput("info")))),
   fluidRow(column(width=12,box(width=12,withLoader(plotOutput("plot3", height = 500), type = "html", loader = "dnaspin"),actionLink("invert","Invert Boxplot | "), downloadLink("dlPlot3", "Download Plot as PDF"))))
   
 )
+
 
 ui<-dashboardPage(
   skin = "purple",
@@ -185,6 +574,9 @@ server <-function(input,output,session){
   type_inner<-reactiveVal(NULL)
   inner<-reactiveVal(NULL)
   
+  upper_label_rv <- reactiveVal("upper")
+  lower_label_rv <- reactiveVal("lower")
+  
   metaFinal_out <- reactiveVal(NULL)
   
   errors_list<-reactiveVal(NULL)
@@ -194,11 +586,215 @@ server <-function(input,output,session){
   inner_ui_inserted  <- reactiveVal(FALSE)
   summary_ui_inserted <- reactiveVal(FALSE)
   
-  observeEvent(input$cohort, {
-    req(input$cohort)
-    withProgress(message = "Loading cohort data", value = 0, {
-      incProgress(0.2, detail = "Reading registry")
-    row <- subset(cohort_registry, folder_name == input$cohort)
+  metabs_tab <- reactiveVal(NULL)
+  
+  analysis_ready <- reactiveVal(FALSE)
+  
+  radar_theme <- theme_minimal(base_family = "Poppins") +
+    theme(
+      panel.grid.major = element_line(color = "#e2e6f3", size = 0.3),
+      panel.grid.minor = element_blank(),
+      axis.title       = element_text(size = 11, color = "#444"),
+      axis.text        = element_text(size = 9, color = "#555"),
+      strip.background = element_rect(fill = "#f0f2fa", color = NA),
+      strip.text       = element_text(size = 9, face = "bold"),
+      plot.title       = element_text(size = 12, face = "bold", hjust = 0.5),
+      legend.position  = "none"
+    )
+  
+  run_analysis <- function(AUC_cutoff, FC_cutoff, FDR_cutoff) {
+
+  # ---- 0) Global checks ----
+  if (length(errors_list()) > 0) {
+    showModal(modalDialog(
+      title = "Cannot run analysis, paste-errors present",
+      paste(errors_list(), collapse = "\n"),
+      easyClose = TRUE
+    ))
+    return(invisible(NULL))
+  }
+
+  metaFinal <- metaFinal_out()
+  if (is.null(metaFinal) || nrow(metaFinal) == 0) {
+    showModal(modalDialog(
+      title = "No filtered cohort",
+      "Please configure stratification, outer and inner comparisons, then run the pre-analysis summary before starting the analysis.",
+      easyClose = TRUE
+    ))
+    return(invisible(NULL))
+  }
+
+  # ---- 1) Basic objects ----
+  fluxfull <- cbind(metaFinal, cohort_flux()[rownames(metaFinal), ])
+  fluxcomp <- fluxfull
+
+  outer <- colnames(metaFinal)[1]
+  inner <- colnames(metaFinal)[2]
+
+  outer_for_vec <- if (!is.null(outerVarFor())) outerVarFor()[[1]] else character(0)
+  outer_rev_vec <- if (!is.null(outerVarRev())) outerVarRev()[[1]] else character(0)
+  outer_all     <- c(outer_for_vec, outer_rev_vec)
+
+  parse_outer <- function(x) {
+    parts <- strsplit(x, " - ", fixed = TRUE)[[1]]
+    if (length(parts) >= 2) {
+      list(var = parts[1], level = parts[2])
+    } else {
+      list(var = x, level = x)
+    }
+  }
+
+  outer_comp_name <- if (length(outer_all) > 0) parse_outer(outer_all[1])$var else "Outer comparison"
+  upper_label     <- if (length(outer_for_vec) > 0) parse_outer(outer_for_vec[1])$level else "upper"
+  lower_label     <- if (length(outer_rev_vec) > 0) parse_outer(outer_rev_vec[1])$level else "lower"
+
+  output$outerTitle <- renderText(outer)
+  output$innerTitle <- renderText(inner)
+  output$plot1Title <- renderText(
+    paste0(
+      "Significant Reactions Across All Subsystems - ",
+      outer_comp_name, " (", upper_label, " v. ", lower_label, ")"
+    )
+  )
+
+  # ---- 2) ROC / t‑test / FDR loop per inner group ----
+  outer_select <- c("upper", "lower")
+  inner_opts   <- unique(metaFinal[, inner])
+
+  metab_names <- c()
+  data_filt   <- fluxcomp
+  for (i in seq_along(inner_opts)) {
+
+    data_filt_var <- subset(data_filt, inner == inner_opts[i])
+
+    AUC_col <- caTools::colAUC(
+      X       = data_filt_var[, -(1:ncol(metaFinal)), drop = FALSE],
+      y       = factor(data_filt_var[, outer]),
+      plotROC = FALSE
+    )
+    
+    AUC_col <- as.numeric(AUC_col[1, ])
+
+    flux_idx <- seq_len(ncol(data_filt_var))[(ncol(metaFinal) + 1):ncol(data_filt_var)]
+    
+    upper_mat <- subset(data_filt_var, outer == "upper")[, flux_idx, drop = FALSE]
+    lower_mat <- subset(data_filt_var, outer == "lower")[, flux_idx, drop = FALSE]
+    
+    # guard: if no rows or no columns, skip this inner level
+    if (nrow(upper_mat) == 0 || nrow(lower_mat) == 0 || ncol(upper_mat) == 0) {
+      next
+    }
+    
+    logFC <- log2(
+      colMeans(upper_mat, na.rm = TRUE) /
+        colMeans(lower_mat, na.rm = TRUE)
+    )
+
+    short <- as.data.frame(logFC[which(abs(logFC) > FC_cutoff & AUC_col >= AUC_cutoff)])
+    t_col <- matrixTests::col_t_welch(
+      x = as.matrix(subset(data_filt_var, outer == "upper")[, rownames(short), drop = FALSE]),
+      y = as.matrix(subset(data_filt_var, outer == "lower")[, rownames(short), drop = FALSE])
+    )
+
+    final <- cbind(t_col$mean.y, t_col$mean.x, short, t_col$statistic, t_col$pvalue)
+    colnames(final) <- c("var_1_mean", "var_2_mean", "log2FC", "t_welch_statistic", "pval")
+    final <- subset(final, subset = pval < 0.05)
+
+    final$fdr <- p.adjust(final$pval, method = "fdr")
+    final     <- subset(final, subset = fdr < FDR_cutoff)
+
+    metab_names <- c(metab_names, rownames(final))
+  }
+
+  metab_names <- unique(metab_names)
+
+  # ---- 3) Build full test list for all inner_opts ----
+  test_list <- data.frame()
+
+  for (i in seq_along(inner_opts)) {
+    nm <- c("outer", metab_names)
+    data_filt_var <- subset(data_filt, subset = inner == inner_opts[i])
+    data_filt_var <- data_filt_var[, nm]
+
+    t_col <- matrixTests::col_t_welch(
+      as.matrix(subset(data_filt_var, subset = outer == "upper")[, metab_names]),
+      as.matrix(subset(data_filt_var, subset = outer == "lower")[, metab_names])
+    )
+
+    final <- as.data.frame(cbind(
+      metabolite       = metab_names,
+      inner_comparison = inner_opts[i],
+      var_1_mean       = as.numeric(t_col$mean.y),
+      var_2_mean       = as.numeric(t_col$mean.x),
+      t_welch_statistic = as.numeric(t_col$statistic),
+      pval             = as.numeric(t_col$pvalue)
+    ))
+
+    colnames(final) <- c("metabolite", "inner_comparison",
+                         "var_1_mean", "var_2_mean",
+                         "t_welch_statistic", "pval")
+
+    final$sign_t_log_pval <- ifelse(
+      final$t_welch_statistic < 0,
+      -(-log10(as.numeric(final$pval))),
+      -log10(as.numeric(final$pval))
+    )
+
+    test_list <- rbind(test_list, final)
+  }
+
+  # ---- 4) Merge with metadata, set sig, inner_comparison factor, etc. ----
+  metabstab <- merge(test_list, reactMeta, by = "metabolite", all.x = TRUE, all.y = FALSE)
+
+  upper_label_rv(upper_label)
+  lower_label_rv(lower_label)
+  
+  metabstab$significant_category <- ifelse(
+    metabstab$sign_t_log_pval > 1.301, upper_label,
+    ifelse(metabstab$sign_t_log_pval < -1.301, lower_label, "ns")
+  )
+
+  # Ensure inner_comparison exists and has correct levels
+  metabstab$inner_comparison <- switch(
+    as.numeric(input$innerType),
+    { # 1: three‑class continuous
+      factor(metabstab$inner_comparison, levels = c("high", "baseline", "low"))
+    },
+    { # 2: two‑class continuous
+      factor(metabstab$inner_comparison, levels = c("high", "low"))
+    },
+    { # 3: binary
+      factor(metabstab$inner_comparison, levels = unique(metabstab$inner_comparison))
+    },
+    { # 4: categorical (or fallback)
+      factor(metabstab$inner_comparison, levels = unique(metabstab$inner_comparison))
+    }
+  )
+
+  if (is.null(inner()) || inner() == "" || as.numeric(input$innerType) == 0) {
+    metabstab$inner_comparison <- "All"
+  }
+
+  updateCheckboxGroupInput(
+    session, "innerSelect",
+    choices  = unique(data_filt[, inner]),
+    selected = unique(data_filt[, inner])
+  )
+  # ---- 5) Store for downstream reactives ----
+  metabs_tab(metabstab)  # or use reactiveVal instead of <<-
+}
+  
+  observeEvent(input$cohort_select, {
+    req(input$cohort_select)
+    
+    session$sendCustomMessage("toggle-loading", TRUE)
+    session$sendCustomMessage("loading-text", "Reading cohort registry…")
+    on.exit({
+      session$sendCustomMessage("toggle-loading", FALSE)
+      session$sendCustomMessage("loading-text", "Cohort loaded successfully")
+    }, add = TRUE)
+    
+    row <- subset(cohort_registry, folder_name == input$cohort_select)
     
     cohort_name(paste0(row$cohort_name, " - ", row$disease))
     
@@ -209,33 +805,39 @@ server <-function(input,output,session){
     clinical_file      <- paste0("../../../../data/RADAR_xCheck_cohort/",file.path(prefix, paste0(prefix, "_clinical.csv")))
     meta_clinical_file <- paste0("../../../../data/RADAR_xCheck_cohort/",file.path(prefix, paste0(prefix, "_meta_clinical.csv")))
     
-    incProgress(0.3, detail = "Loading flux")
+    session$sendCustomMessage("loading-text", "Loading flux matrices…")
     flux <- as.data.frame(as.matrix(data.table::fread(flux_file), rownames = 1))
     
-    incProgress(0.2, detail = "Loading gene expression")
+    session$sendCustomMessage("loading-text", "Loading gene expression data…")
     gene_mat <- as.data.frame(as.matrix(data.table::fread(gene_file, header = TRUE), rownames = 1))
     
-    incProgress(0.2, detail = "Loading clinical data")
+    session$sendCustomMessage("loading-text", "Loading clinical annotations…")
     clinical_df <- read.csv(clinical_file, header = TRUE, row.names = 1)
     meta_clin_df <- read.csv(meta_clinical_file, header = TRUE)
     
+    session$sendCustomMessage("loading-text", "Finalizing cohort setup…")
     cohort_flux(flux)
     gene(gene_mat)
     clinical(clinical_df)
     meta_clinical(meta_clin_df)
     
-    incProgress(0.1, detail = "Finishing")
-    })
   })
   
-  observeEvent(list(input$cohort,input$stratType),{
+  observeEvent(list(input$cohort_select,input$stratType),{
     
-    withProgress(message = "Updating stratifications", value = 0, {
       req(gene(), clinical(), meta_clinical())
       
+    session$sendCustomMessage("toggle-loading", TRUE)
+    session$sendCustomMessage("loading-text", "Preparing stratification options…")
+    on.exit({
+      session$sendCustomMessage("toggle-loading", FALSE)
+      session$sendCustomMessage("loading-text", "Stratifications loaded successfully")
+    }, add = TRUE)
+    
       genes <- colnames(gene())
       n_genes <- length(genes)
       
+      session$sendCustomMessage("loading-text", "Building 2-class gene stratifications…")
       results_genes_2 <- vector("list", n_genes)
       names(results_genes_2) <- genes
       
@@ -244,13 +846,10 @@ server <-function(input,output,session){
           paste0(genes[i], " - high"),
           paste0(genes[i], " - low")
         )
-        if (i %% 100 == 0 || i == n_genes) {
-          incProgress(0.2 * i / n_genes,
-                      detail = sprintf("Preparing 2-class gene stratifications (%d/%d)", i, n_genes))
-        }
       }
       choices_gene_2_class(results_genes_2)
       
+      session$sendCustomMessage("loading-text", "Building 3-class gene stratifications…")
       results_genes_3 <- vector("list", n_genes)
       names(results_genes_3) <- genes
       for (i in seq_along(genes)) {
@@ -259,14 +858,11 @@ server <-function(input,output,session){
           paste0(genes[i], " - baseline"),
           paste0(genes[i], " - low")
         )
-        if (i %% 100 == 0 || i == n_genes) {
-          incProgress(0.2 + 0.2 * i / n_genes,
-                      detail = sprintf("Preparing 3-class gene stratifications (%d/%d)", i, n_genes))
-        }
       }
       choices_gene_3_class(results_genes_3)
       
       # Clinical stratifications
+      session$sendCustomMessage("loading-text", "Building clinical stratifications…")
       clinicalVars <- colnames(clinical())
       n_clin <- length(clinicalVars)
       
@@ -287,15 +883,12 @@ server <-function(input,output,session){
           results_clinical_2[[var]] <- labels
           results_clinical_3[[var]] <- labels
         }
-        if (i %% 10 == 0 || i == n_clin) {
-          incProgress(0.4 + 0.2 * i / max(1, n_clin),
-                      detail = sprintf("Building clinical stratifications (%d/%d)", i, n_clin))
-        }
       }
       
       choices_clinical_2_class(results_clinical_2)
       choices_clinical_3_class(results_clinical_3)
       
+      session$sendCustomMessage("loading-text", "Updating stratification controls…")
       # Final UI updates (coarse progress to 1.0)
       if (as.numeric(input$stratType) == 1) {
         updateVirtualSelect("clinStrat", choices = choices_clinical_3_class())
@@ -304,8 +897,6 @@ server <-function(input,output,session){
         updateVirtualSelect("clinStrat", choices = choices_clinical_2_class())
         updateVirtualSelect("geneStrat", choices = choices_gene_2_class())
       }
-      incProgress(0.2, detail = "Finishing stratification update")
-    })
   })
   
   observeEvent(input$submitStrat, {
@@ -321,7 +912,7 @@ server <-function(input,output,session){
                                          box(width = 12, selectizeInput(label="Select Variable Type", inputId = "outerVarType", choices = c("Clinical Data"=1,"Gene Expression"=2),selected=1)),
                                          box(width = 6, virtualSelectInput(label="Select Forward Variable(s)", inputId = "outerVarFor", choices = colnames(clinical),showValueAsTags = TRUE, search = TRUE, multiple = TRUE)),
                                          box(width = 6, virtualSelectInput(label="Select Inverted Variable(s)", inputId = "outerVarRev", choices = colnames(clinical),showValueAsTags = TRUE, search = TRUE, multiple = TRUE)),
-                                         fluidRow(column(width=12,actionButton("submitOuter", "Submit"),tags$div(id = 'outerButton'))))),tags$div(id = 'outer')
+                                         fluidRow(column(width=12,actionButton("submitOuter", "Submit outer settings"),tags$div(id = 'outerButton'))))),tags$div(id = 'outer')
                       
         )
       )
@@ -343,7 +934,7 @@ server <-function(input,output,session){
     }
   })
   
-  observeEvent(list(input$cohort,input$outerType,input$outerVarType),{
+  observeEvent(list(input$cohort_select,input$outerType,input$outerVarType),{
     req(input$outerType)
     if(input$outerType == 1){
       if(input$outerVarType == 1){
@@ -470,7 +1061,7 @@ server <-function(input,output,session){
     }
   })
   
-  observeEvent(list(input$cohort,input$innerType,input$innerVarType),{
+  observeEvent(list(input$cohort_select,input$innerType,input$innerVarType),{
     req(input$innerType)
     if(input$innerType == 1 | input$innerType == 2){
       if(input$innerVarType == 1){
@@ -497,7 +1088,7 @@ server <-function(input,output,session){
                                           box(width = 6, noUiSliderInput(inputId = "customAUC", label = "AUC:", min = 0.6, max = 1.0, value = 0.65, tooltip = TRUE, step = 0.01),
                                               noUiSliderInput(inputId = "customFC", label = "Log2FC:", min = 0, max = 5, value = 1, tooltip = TRUE, step = 0.01),
                                               noUiSliderInput(inputId = "customFDR", label = "FDR:", min = 0, max = 1, value = 0.05, tooltip = TRUE, step = 0.01)),
-                                          fluidRow(column(width=12,actionButton("submitReport", "Begin Analysis (set parameters)")),column(width=12,actionButton("submitReportDefault", "Begin Analysis (default parameters)")))))
+                                          fluidRow(column(width=12,actionButton("submitReport", "Begin Analysis (set parameters)")),column(width=12,actionButton("submitReportDefault", "Begin Analysis (p < 0.05 only)")))))
                       
         )
       )
@@ -927,695 +1518,190 @@ server <-function(input,output,session){
     }
   )
   
-  observeEvent(input$submitReport,{
-    if (length(errors_list()) > 0) {
-      showModal(
-        modalDialog(
-          title = "Cannot run analysis",
-          paste("Errors present:", paste(errors_list(), collapse = "; ")),
-          easyClose = TRUE
-        )
-      )
-      return()
-    }
-    
-    metaFinal <- metaFinal_out()
-    if (is.null(metaFinal) || nrow(metaFinal) == 0) {
-      showModal(
-        modalDialog(
-          title = "No filtered cohort",
-          "Please configure stratification, outer and inner comparisons, then run the pre-analysis summary before starting the analysis.",
-          easyClose = TRUE
-        )
-      )
-      return()
-    }
-    
-    flux_full <- cbind(metaFinal, cohort_flux()[rownames(metaFinal), ])
-    flux_comp <- flux_full
-    
-    outer <- colnames(metaFinal)[1]
-    inner <- colnames(metaFinal)[2]
-    
-    outer_for_vec <- if (!is.null(outerVarFor())) outerVarFor()[[1]] else character(0)
-    outer_rev_vec <- if (!is.null(outerVarRev())) outerVarRev()[[1]] else character(0)
-    outer_all     <- c(outer_for_vec, outer_rev_vec)
-    
-    parse_outer <- function(x) {
-      parts <- strsplit(x, " - ", fixed = TRUE)[[1]]
-      if (length(parts) >= 2) list(var = parts[1], level = parts[2]) else list(var = x, level = x)
-    }
-    
-    # Base comparison name (e.g. "FLT3.ITD")
-    outer_comp_name <- if (length(outer_all) > 0) {
-      parse_outer(outer_all[1])$var
-    } else {
-      "Outer comparison"
-    }
-    
-    # Human-readable upper / lower labels
-    upper_label <- if (length(outer_for_vec) > 0) parse_outer(outer_for_vec[1])$level else "upper"
-    lower_label <- if (length(outer_rev_vec) > 0) parse_outer(outer_rev_vec[1])$level else "lower"
-    
-      #   if(input$outerType != 1){
-      outer_select_1<-c("upper", "lower")
-      inner_opts<-unique(metaFinal[,"inner"])
-      metab_names<-c()
-      data_filt<-flux_comp
-      
-      for (i in 1:length(inner_opts)){
-        data_filt_var<-subset(data_filt, data_filt[,"inner"] == inner_opts[[i]])
-        AUC = colAUC(data_filt_var[,-c(1:dim(metaFinal)[2])],factor(data_filt_var[,outer]),plotROC=FALSE)
-        
-        AUC = AUC[1,]
-        #plot(density(AUC),main=paste0("AUC for ", inner_opts[i]," features"))
-        logFC = log2(apply(subset(data_filt_var, subset = data_filt_var[,"outer"] == "upper")[,-c(1:dim(metaFinal)[2])],2,mean) / apply(subset(data_filt_var, subset = data_filt_var[,"outer"] == "lower")[,-c(1:dim(metaFinal)[2])],2,mean))
-        logFC[AUC<input$customAUC]=0
-        short<-as.data.frame(logFC[which(abs(logFC)>input$customFC)])
-        t<-col_t_welch(as.matrix(subset(data_filt_var, subset = data_filt_var[,"outer"] == "upper")[,rownames(short)]),as.matrix(subset(data_filt_var, subset = data_filt_var[,"outer"] == "lower")[,rownames(short)]))
-        final<-cbind(t$mean.y, t$mean.x, short, t$statistic, t$pvalue)
-        colnames(final)<-c("var_1_mean","var_2_mean","log2FC","t_welch_statistic","pval")
-        
-        #final<-subset(final, subset = pval < 0.05)
-        final$fdr = p.adjust(final[,"pval"],method="fdr")
-        final<-subset(final, subset = fdr < input$customFDR)
-        metab_names<-c(metab_names, rownames(final))
-      }
-      metab_names<-unique(metab_names)
-      
-      test_list<-data.frame()
-      for (i in 1:length(inner_opts)){
-        names<-c(outer, metab_names)
-        inner_comparison<-inner_opts[i]
-        data_filt_var<-subset(data_filt, subset = data_filt[,"inner"] == inner_opts[i])
-        data_filt_var<-data_filt_var[,names]
-        t<-col_t_welch(as.matrix(subset(data_filt_var, subset = data_filt_var[,"outer"] == "upper")[,metab_names]),as.matrix(subset(data_filt_var, subset = data_filt_var[,"outer"] == "lower")[,metab_names]))
-        final<-as.data.frame(cbind(metabolite=metab_names,inner_comparison=inner_comparison,as.numeric(t$mean.y), as.numeric(t$mean.x),as.numeric(t$statistic), as.numeric(t$pvalue)))
-        colnames(final)<-c("metabolite","inner_comparison","var_1_mean","var_2_mean","t_welch_statistic","pval")
-        final$sign_t_log_pval = ifelse(final$t_welch_statistic>0, -log10(as.numeric(final$pval)), log10(as.numeric(final$pval)))
-        test_list<-as.data.frame(rbind(test_list,final))
-      }
-      
-      metabs_tab <- merge(test_list, reactMeta, by = "metabolite", all.x = TRUE, all.y = FALSE)
-      # If there was no inner comparison, ensure the column exists and is "All"
-      
-      metabs_tab$sig <- ifelse(
-        metabs_tab$sign_t_log_pval > 1.301, "up",
-        ifelse(metabs_tab$sign_t_log_pval < -1.301, "down", "ns")
-      )
-      
-      # Re-level inner_comparison depending on innerType
-      metabs_tab$inner_comparison <- switch(
-        as.numeric(input$innerType),
-        # 1: three-class continuous
-        factor(metabs_tab$inner_comparison, levels = c("high", "baseline", "low")),
-        # 2: two-class continuous
-        factor(metabs_tab$inner_comparison, levels = c("high", "low")),
-        # 3: binary
-        factor(metabs_tab$inner_comparison, levels = unique(metabs_tab$inner_comparison)),
-        # 4: categorical
-        factor(metabs_tab$inner_comparison, levels = unique(metabs_tab$inner_comparison))
-      )
-      
-      if (inner() == "") {
-        metabs_tab$inner_comparison <- "All"
-      }
-      
-      updateCheckboxGroupInput(session,"innerSelect", choices = unique(data_filt[,2]), selected = unique(data_filt[,2]))
-      
-      output$outerTitle<-renderText(outer)
-      output$innerTitle<-renderText(inner)
-      
-      output$plot1Title <- renderText(
-        paste0(
-          "Significant Reactions Across All Subsystems - ",
-          outer_comp_name,
-          " (", upper_label, " v. ", lower_label, ")"
-        )
-      )
-      
-      metabs_fin <- reactive({
-        req(exists("metabs_tab"), !is.null(metabs_tab))
-        
-        if (!"inner_comparison" %in% colnames(metabs_tab)) {
-          return(metabs_tab)
-        }
-        
-        if (nrow(metabs_tab) == 0) {
-          return(metabs_tab)
-        }
-        
-        inner_levels <- unique(metabs_tab[,"inner_comparison", drop = TRUE])
-        
-        if (length(inner_levels) == 1) {
-          subset(metabs_tab, sig %in% input$outerSelect)
-        } else {
-          subset(
-            metabs_tab,
-            inner_comparison %in% input$innerSelect & sig %in% input$outerSelect
-          )
-        }
-      })
-      
-      plot1 <- reactive({
-        if(length(unique(metabs_fin()[,"inner_comparison"])) == 1){
-          ggplot(metabs_fin(), aes(x=reorder(subsystem, -sign_t_log_pval), y=sign_t_log_pval, color=sig, fill = sig)) + geom_point(size = 1, position = position_dodge(width=0.5))+
-            theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+geom_hline(yintercept=1.3, size=.05)+geom_hline(yintercept=-1.3, size=.05)+xlab("subsystem")
-        }else{
-          ggplot(metabs_fin(), aes(x=reorder(subsystem, -sign_t_log_pval), y=sign_t_log_pval, color=inner_comparison, fill = inner_comparison)) + geom_point(size = 1, position = position_dodge(width=0.5))+
-            theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+geom_hline(yintercept=1.3, size=.05)+geom_hline(yintercept=-1.3, size=.05)+xlab("subsystem")
-        }
-        
-      })
-      
-      output$plot1<- renderPlot({
-        plot1()
-      })
-      
-      plot1pdf <- reactive({
-        ggplot(metabs_fin(), aes(x=as.numeric(t_welch_statistic), y=reorder(subsystem, -as.numeric(t_welch_statistic)), color=sig, fill = sig)) + geom_point(size = 1, position = position_dodge(width=0.5))+theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+geom_vline(xintercept=1.3, size=.05)+geom_vline(xintercept=-1.3, size=.05)+ylab("subsystem")+xlab("log(pval) with sign of t-statistic")+ggtitle(paste0("Significant Reactions Across All Subsystems - (assay_1 v. assay_2)"))
-      })
-      
-      output$reacts <- downloadHandler(
-        filename = function() {
-          paste(paste0(input$innerSelect, collapse = "_"),"_",inner, "_",paste0(input$outerSelect, collapse = "_"), outer, '_filtered_reactions.rds', sep='')
-        },
-        content = function(file) {
-          saveRDS(list(metabs_fin(),metaFinal,data.frame(AUC=input$customAUC,Log2FC=input$customFC,FDR=input$customFDR),"cohort"),file)
-        }
-      )
-      
-      # output$reacts_meta <- downloadHandler(
-      #   filename = function() {
-      #     paste(paste0(input$innerSelect, collapse = "_"),"_",inner, "_",paste0(input$outerSelect, collapse = "_"), outer, '_meta_data.csv', sep='')
-      #   },
-      #   content = function(file) {
-      #     write.csv(metaFinal,file)
-      #   }
-      # )
-      
-      systems<-reactive({
-        if(length(unique(metabs_fin()[,"inner_comparison"])) == 1){
-          ggbld <- ggplot_build(ggplot(metabs_fin(), aes(x=reorder(subsystem, -sign_t_log_pval), y=sign_t_log_pval, color=sig, fill = sig)) + geom_point(size = 1, position = position_dodge(width=0.5))+theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+geom_hline(yintercept=1.3, size=.05)+geom_hline(yintercept=-1.3, size=.05)+xlab("subsystem"))
-          ggbld$layout$panel_params[[1]]$x$limits
-        }else{
-          ggbld <- ggplot_build(ggplot(metabs_fin(), aes(x=reorder(subsystem, -sign_t_log_pval), y=sign_t_log_pval, color=inner_comparison, fill = inner_comparison)) + geom_point(size = 1, position = position_dodge(width=0.5))+theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+geom_hline(yintercept=1.3, size=.05)+geom_hline(yintercept=-1.3, size=.05)+xlab("subsystem"))
-          ggbld$layout$panel_params[[1]]$x$limits
-        }
-        
-      })
-      
-      
-      output$dlPlot1 <- downloadHandler(
-        filename = function() {
-          paste('all_subsystems.pdf', sep='')
-        },
-        content = function(file) {
-          withProgress(message = 'Generating PDF', value = 0, {
-            incProgress(0.3, detail = "Preparing data")
-            
-            pdf(file, width = 11, height = 8.5)  # Standard letter size
-            
-            # Plot or write your content to the PDF here
-            # For example:
-            plot(plot1pdf())
-            # Add more plots or text as needed
-            
-            incProgress(0.3, detail = "Creating PDF")
-            
-            # Close the PDF device
-            dev.off()
-            
-            incProgress(0.4, detail = "Finalizing")
-          })
-        },
-        contentType = "application/pdf"
-      )
-      
-      observeEvent(input$clickBar, {
-        groupId <- round(input$clickBar$x)
-        output$plot2Title <- renderText(
-          paste0(
-            "Significant Reactions ", outer_comp_name, " - ", systems()[groupId],
-            " (", upper_label, " v. ", lower_label, ")"
-          )
-        )
-        plot2 <- reactive({
-          if(length(unique(metabs_fin()[,"inner_comparison"])) == 1){
-            ggplot(subset(metabs_fin(), subset = subsystem == systems()[groupId]), aes(x=inner_comparison, y=sign_t_log_pval, color=sig, fill = sig)) + geom_point(size = 2)+geom_line(aes(group = metabolite, x=inner_comparison),color="grey")+theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+geom_hline(yintercept=1.3, size=.05)+geom_hline(yintercept=-1.3, size=.05)
-          }else{
-            ggplot(subset(metabs_fin(), subset = subsystem == systems()[groupId]), aes(x=inner_comparison, y=sign_t_log_pval, color=inner_comparison, fill = inner_comparison)) + geom_point(size = 2)+geom_line(aes(group = metabolite, x=inner_comparison),color="grey")+theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+geom_hline(yintercept=1.3, size=.05)+geom_hline(yintercept=-1.3, size=.05)
-          }
-          
-        })
-        output$plot2<- renderPlot({
-          plot2()
-        })
-        plot2pdf <- reactive({
-          if(length(unique(metabs_fin()[,"inner_comparison"])) == 1){
-            ggplot(subset(metabs_fin(), subset = subsystem == systems()[groupId]), aes(x=inner_comparison, y=sign_t_log_pval, color=sig, fill = sig)) + geom_point(size = 2)+geom_line(aes(group = metabolite, x=inner_comparison),color="grey")+theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+geom_hline(yintercept=1.3, size=.05)+geom_hline(yintercept=-1.3, size=.05)+ggtitle(paste0("Significant Reactions ",outer, " - ",systems[groupId], " (upper v. lower)"))
-          }else{
-            ggplot(subset(metabs_fin(), subset = subsystem == systems()[groupId]), aes(x=inner_comparison, y=sign_t_log_pval, color=inner_comparison, fill = inner_comparison)) + geom_point(size = 2)+geom_line(aes(group = metabolite, x=inner_comparison),color="grey")+theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+geom_hline(yintercept=1.3, size=.05)+geom_hline(yintercept=-1.3, size=.05)+ggtitle(paste0("Significant Reactions ",outer, " - ",systems[groupId], " (upper v. lower)"))
-          }
-          
-        })
-        output$dlPlot2 <- downloadHandler(
-          filename = function() {
-            paste(str_replace(systems()[groupId]," ","_"),'_',outer,'.pdf', sep='')
-          },
-          content = function(file) {
-            ggsave(file, plot2pdf(), width = 8, height = 12, dpi = 400, units = "in")
-          }
-        )
-        output$info<-renderReactable({
-          metabs_fin<-metabs_fin()
-          metabs_fin$var_1_mean<-round(as.numeric(metabs_fin$var_1_mean), digits=4)
-          metabs_fin$var_2_mean<-round(as.numeric(metabs_fin$var_2_mean), digits=4)
-          metabs_fin$sign_t_log_pval<-round(as.numeric(metabs_fin$sign_t_log_pval), digits=4)
-          reactable(brushedPoints(subset(metabs_fin, subset = subsystem == systems()[groupId]), input$plot_brush2, xvar = "inner_comparison", yvar="sign_t_log_pval"))
-        })
-        data <- reactive({
-          as.data.frame(brushedPoints(subset(metabs_fin, subset = subsystem == systems()[groupId]), input$plot_brush2, xvar = "inner_comparison", yvar="sign_t_log_pval"))
-        })
-        output$data <- downloadHandler(
-          filename = function() {
-            paste(str_replace(systems()[groupId]," ","_"),'_selected_reactions_',outer, '.csv', sep='')
-          },
-          content = function(file) {
-            write.csv(data(),file)
-          }
-        )
-        
-        observe({
-          updateSelectizeInput(session, "boxplot",
-                               choices = brushedPoints(subset(metabs_fin(), subset = subsystem == systems()[groupId]), input$plot_brush2, xvar = "inner_comparison", yvar="sign_t_log_pval")$metabolite
-          )})
-      })
- 
-      plot3 <- reactive({
-        if (input$boxplot == "") {
-          return(ggplot())
-        }
-        
-        metaFinal <- metaFinal_out()
-        req(metaFinal)
-        
-        outer_var <- colnames(metaFinal)[1]
-        inner_var <- colnames(metaFinal)[2]
-        
-        outer_type <- as.numeric(input$outerType)
-        has_inner  <- !(is.null(inner()) || inner() == "" || type_inner() == 0)
-        inner_name <- if (has_inner) inner() else "None"
-        
-        # Base data
-        df <- data_filt[, c(colnames(metaFinal), input$boxplot), drop = FALSE]
-        colnames(df)[1] <- "outer_group"
-        colnames(df)[2] <- "inner"
-        
-        # ---------- Parse outer selections for labels ----------
-        
-        outer_for_vec <- if (!is.null(outerVarFor())) outerVarFor()[[1]] else character(0)
-        outer_rev_vec <- if (!is.null(outerVarRev())) outerVarRev()[[1]] else character(0)
-        outer_all     <- c(outer_for_vec, outer_rev_vec)
-        
-        parse_outer <- function(x) {
-          parts <- strsplit(x, " - ", fixed = TRUE)[[1]]
-          if (length(parts) >= 2) list(var = parts[1], level = parts[2]) else list(var = x, level = x)
-        }
-        
-        # Default labels
-        cont_name       <- NULL
-        outer_level_map <- NULL
-        outer_levels    <- sort(unique(df$outer_group))
-        
-        if (length(outer_all) > 0) {
-          parsed <- lapply(outer_all, parse_outer)
-          cont_name <- parsed[[1]]$var                    # e.g. "FLT3.ITD"
-          for_levels <- vapply(outer_for_vec, function(z) parse_outer(z)$level, character(1))
-          rev_levels <- vapply(outer_rev_vec, function(z) parse_outer(z)$level, character(1))
-          outer_levels <- unique(c(for_levels, rev_levels))
-          
-          # Map original outer_group values to pretty labels:
-          # assume outer_group encodes upper/lower in your metaFinal,
-          # but here we simply relabel based on order of levels we derived
-          if (length(outer_levels) >= 2) {
-            outer_level_map <- setNames(outer_levels, c("upper", "lower")[seq_along(outer_levels)])
-          }
-        }
-        
-        # Apply outer label mapping to df$outer_group (if available)
-        df$outer_group <- factor(as.character(df$outer_group))
-        if (!is.null(outer_level_map)) {
-          # Map factor levels "upper"/"lower" (or whatever you used) to user-friendly labels
-          df$outer_group <- factor(
-            outer_level_map[as.character(df$outer_group)],
-            levels = outer_levels
-          )
-        }
-        
-        # ---------- BOX PLOTS (original behavior, now with pretty x labels) ----------
-        flux_col <- input$boxplot
-        
-        pval_to_stars <- function(p) {
-          if (is.na(p)) return("ns")
-          if (p < 0.001) return("***")
-          if (p < 0.01)  return("**")
-          if (p < 0.05)  return("*")
-          "ns"
-        }
-        
-        if (!has_inner) {
-          # global test between the two outer groups
-          sub <- df[!is.na(df$outer_group) & !is.na(df[[flux_col]]), ]
-          if (nrow(sub) >= 2 && nlevels(sub$outer_group) == 2) {
-            p_val <- tryCatch(
-              {
-                t.test(df[[flux_col]] ~ df$outer_group)$p.value
-              },
-              error = function(e) NA_real_
-            )
-          } else {
-            p_val <- NA_real_
-          }
-          star_label <- pval_to_stars(p_val)
-          
-          # y position for the star: slightly above max
-          y_max <- max(sub[[flux_col]], na.rm = TRUE)
-          y_star <- y_max + 0.05 * diff(range(sub[[flux_col]], na.rm = TRUE))
-          
-          p_box <- ggplot(sub, aes(x = outer_group, y = .data[[flux_col]])) +
-            geom_boxplot() +
-            geom_jitter(width = 0.1, alpha = 0.6) +
-            # add one star spanning both boxes
-            geom_segment(aes(
-              x = 1, xend = 2,
-              y = y_star, yend = y_star
-            )) +
-            geom_text(
-              aes(x = 1.5, y = y_star, label = star_label),
-              vjust = -0.3
-            ) +
-            xlab(if (is.null(cont_name)) "Outer group" else cont_name) +
-            ylab(flux_col)
-          
-        } else {
-          # per-inner tests
-          inner_levels <- sort(unique(df$inner))
-          # compute a small data frame with positions and stars
-          star_df <- do.call(rbind, lapply(inner_levels, function(lv) {
-            sub <- df[df$inner == lv & !is.na(df$outer_group) & !is.na(df[[flux_col]]), ]
-            if (nrow(sub) < 2 || nlevels(sub$outer_group) < 2) {
-              return(NULL)
-            }
-            p_val <- tryCatch(
-              {
-                t.test(sub[[flux_col]] ~ sub$outer_group)$p.value
-              },
-              error = function(e) NA_real_
-            )
-            star_label <- pval_to_stars(p_val)
-            y_max <- max(sub[[flux_col]], na.rm = TRUE)
-            y_star <- y_max + 0.05 * diff(range(sub[[flux_col]], na.rm = TRUE))
-            data.frame(
-              inner = lv,
-              x_start = 1,
-              x_end   = 2,
-              x_mid   = 1.5,
-              y_star  = y_star,
-              label   = star_label,
-              stringsAsFactors = FALSE
-            )
-          }))
-          
-          p_box <- ggplot(df, aes(x = outer_group, y = .data[[flux_col]])) +
-            geom_boxplot() +
-            geom_jitter(width = 0.1, alpha = 0.6) +
-            facet_grid(. ~ inner) +
-            xlab(if (is.null(cont_name)) "Outer group" else cont_name) +
-            ylab(flux_col)
-          
-          if (!is.null(star_df) && nrow(star_df) > 0) {
-            p_box <- p_box +
-              geom_segment(
-                data = star_df,
-                aes(x = x_start, xend = x_end, y = y_star, yend = y_star),
-                inherit.aes = FALSE
-              ) +
-              geom_text(
-                data = star_df,
-                aes(x = x_mid, y = y_star, label = label),
-                vjust = -0.3,
-                inherit.aes = FALSE
-              )
-          }
-        }
-        
-        # ---------- IF OUTER NOT CONTINUOUS-DERIVED: ONLY BOX PLOTS ----------
-        
-        if (!(outer_type %in% c(1, 2))) {
-          return(p_box)
-        }
-        
-        # ---------- RECONSTRUCT RAW CONTINUOUS OUTER VARIABLE ----------
-        
-        if (is.null(cont_name)) {
-          return(p_box)
-        }
-        
-        all_covars <- cbind(clinical(), gene())
-        if (!cont_name %in% colnames(all_covars)) {
-          return(p_box)
-        }
-        
-        vals  <- all_covars[rownames(metaFinal), cont_name]
-        x_num <- suppressWarnings(as.numeric(vals))
-        if (all(is.na(x_num))) {
-          return(p_box)
-        }
-        
-        df$outer_cont <- x_num[match(rownames(df), rownames(metaFinal))]
-        
-        # ---------- CORRELATION PLOTS (outer_cont vs flux, r annotated) ----------
-        
-        flux_col <- input$boxplot
-        
-        if (!has_inner) {
-          sub <- df[!is.na(df$outer_cont) & !is.na(df[[flux_col]]), ]
-          if (nrow(sub) == 0) {
-            return(p_box)
-          }
-          r_val <- suppressWarnings(cor(sub$outer_cont, sub[[flux_col]], use = "complete.obs"))
-          p_corr <- ggplot(sub, aes(x = outer_cont, y = .data[[flux_col]])) +
-            geom_point(alpha = 0.6) +
-            geom_smooth(method = "lm", se = FALSE, color = "red") +
-            xlab(cont_name) +
-            ylab(flux_col) +
-            ggtitle(
-              paste0("Correlation across full cohort (r = ",
-                     sprintf("%.2f", r_val), ")")
-            )
-        } else {
-          inner_levels <- sort(unique(df$inner))
-          corr_plots <- lapply(inner_levels, function(lv) {
-            sub <- df[df$inner == lv & !is.na(df$outer_cont) & !is.na(df[[flux_col]]), ]
-            if (nrow(sub) == 0) {
-              return(ggplot() + ggtitle(paste("No data for", lv)))
-            }
-            r_val <- suppressWarnings(cor(sub$outer_cont, sub[[flux_col]], use = "complete.obs"))
-            ggplot(sub, aes(x = outer_cont, y = .data[[flux_col]])) +
-              geom_point(alpha = 0.6) +
-              geom_smooth(method = "lm", se = FALSE, color = "red") +
-              xlab(cont_name) +
-              ylab(flux_col) +
-              ggtitle(
-                paste0(inner_name, " = ", lv, " (r = ", sprintf("%.2f", r_val), ")")
-              )
-          })
-          p_corr <- cowplot::plot_grid(plotlist = corr_plots, ncol = 1)
-        }
-        
-        cowplot::plot_grid(p_box, p_corr, ncol = 2, rel_widths = c(2, 1))
-      })
-      
-      output$plot3<- renderPlot({
-        plot3()
-      })
-      
-      output$dlPlot3 <- downloadHandler(
-        filename = function() {
-          paste(input$boxplot,'_',label, '.pdf', sep='')
-        },
-        content = function(file) {
-          ggsave(file, plot3(), width = 12, height = 8, dpi = 400, units = "in")
-        }
-      )
-      
-      #     }
-      #   }
-  })
+
   
-  observeEvent(input$submitReportDefault,{
-    if (length(errors_list()) > 0) {
-      showModal(
-        modalDialog(
-          title = "Cannot run analysis",
-          paste("Errors present:", paste(errors_list(), collapse = "; ")),
-          easyClose = TRUE
-        )
+    observeEvent(input$submitReport, {
+      session$sendCustomMessage("toggle-loading", TRUE)
+      session$sendCustomMessage("loading-text", "Reading cohort registry…")
+      on.exit({
+        session$sendCustomMessage("toggle-loading", FALSE)
+        session$sendCustomMessage("loading-text", "Cohort loaded successfully")
+      }, add = TRUE)
+      session$sendCustomMessage("loading-text", "Running xCheck analysis…")
+      run_analysis(
+        AUC_cutoff = input$customAUC,
+        FC_cutoff  = input$customFC,
+        FDR_cutoff = input$customFDR
       )
-      return()
-    }
+      analysis_ready(TRUE)
+    })
     
-    metaFinal <- metaFinal_out()
-    if (is.null(metaFinal) || nrow(metaFinal) == 0) {
-      showModal(
-        modalDialog(
-          title = "No filtered cohort",
-          "Please configure stratification, outer and inner comparisons, then run the pre-analysis summary before starting the analysis.",
-          easyClose = TRUE
-        )
+    observeEvent(input$submitReportDefault, {
+      session$sendCustomMessage("toggle-loading", TRUE)
+      session$sendCustomMessage("loading-text", "Reading cohort registry…")
+      on.exit({
+        session$sendCustomMessage("toggle-loading", FALSE)
+        session$sendCustomMessage("loading-text", "Cohort loaded successfully")
+      }, add = TRUE)
+      session$sendCustomMessage("loading-text", "Running xCheck analysis…")
+      run_analysis(
+        AUC_cutoff = 0,
+        FC_cutoff  = 0,
+        FDR_cutoff = 0.05
       )
-      return()
-    }
+      analysis_ready(TRUE)
+    })
     
-    flux_full <- cbind(metaFinal, cohort_flux()[rownames(metaFinal), ])
-    flux_comp <- flux_full
-    
-    outer <- colnames(metaFinal)[1]
-    inner <- colnames(metaFinal)[2]
-    
-    outer_for_vec <- if (!is.null(outerVarFor())) outerVarFor()[[1]] else character(0)
-    outer_rev_vec <- if (!is.null(outerVarRev())) outerVarRev()[[1]] else character(0)
-    outer_all     <- c(outer_for_vec, outer_rev_vec)
-    
-    parse_outer <- function(x) {
-      parts <- strsplit(x, " - ", fixed = TRUE)[[1]]
-      if (length(parts) >= 2) list(var = parts[1], level = parts[2]) else list(var = x, level = x)
-    }
-    
-    # Base comparison name (e.g. "FLT3.ITD")
-    outer_comp_name <- if (length(outer_all) > 0) {
-      parse_outer(outer_all[1])$var
-    } else {
-      "Outer comparison"
-    }
-    
-    # Human-readable upper / lower labels
-    upper_label <- if (length(outer_for_vec) > 0) parse_outer(outer_for_vec[1])$level else "upper"
-    lower_label <- if (length(outer_rev_vec) > 0) parse_outer(outer_rev_vec[1])$level else "lower"
-    
-    #   if(input$outerType != 1){
-    outer_select_1<-c("upper", "lower")
-    inner_opts<-unique(metaFinal[,"inner"])
-    metab_names<-c()
-    data_filt<-flux_comp
-    
-    for (i in 1:length(inner_opts)){
-      data_filt_var<-subset(data_filt, data_filt[,"inner"] == inner_opts[[i]])
-      AUC = colAUC(data_filt_var[,-c(1:dim(metaFinal)[2])],factor(data_filt_var[,outer]),plotROC=FALSE)
+    observeEvent(analysis_ready(), {
+      req(analysis_ready())
+      up_lab   <- upper_label_rv()
+      down_lab <- lower_label_rv()
       
-      AUC = AUC[1,]
-      #plot(density(AUC),main=paste0("AUC for ", inner_opts[i]," features"))
-      logFC = log2(apply(subset(data_filt_var, subset = data_filt_var[,"outer"] == "upper")[,-c(1:dim(metaFinal)[2])],2,mean) / apply(subset(data_filt_var, subset = data_filt_var[,"outer"] == "lower")[,-c(1:dim(metaFinal)[2])],2,mean))
-      short<-as.data.frame(logFC)
-      t<-col_t_welch(as.matrix(subset(data_filt_var, subset = data_filt_var[,"outer"] == "upper")[,rownames(short)]),as.matrix(subset(data_filt_var, subset = data_filt_var[,"outer"] == "lower")[,rownames(short)]))
-      final<-cbind(t$mean.y, t$mean.x, short, t$statistic, t$pvalue)
-      colnames(final)<-c("var_1_mean","var_2_mean","log2FC","t_welch_statistic","pval")
-      
-      #final<-subset(final, subset = pval < 0.05)
-      final$fdr = p.adjust(final[,"pval"],method="fdr")
-      final<-subset(final, subset = pval < 0.05)
-      metab_names<-c(metab_names, rownames(final))
-    }
-    metab_names<-unique(metab_names)
-    
-    test_list<-data.frame()
-    for (i in 1:length(inner_opts)){
-      names<-c(outer, metab_names)
-      inner_comparison<-inner_opts[i]
-      data_filt_var<-subset(data_filt, subset = data_filt[,"inner"] == inner_opts[i])
-      data_filt_var<-data_filt_var[,names]
-      t<-col_t_welch(as.matrix(subset(data_filt_var, subset = data_filt_var[,"outer"] == "upper")[,metab_names]),as.matrix(subset(data_filt_var, subset = data_filt_var[,"outer"] == "lower")[,metab_names]))
-      final<-as.data.frame(cbind(metabolite=metab_names,inner_comparison=inner_comparison,as.numeric(t$mean.y), as.numeric(t$mean.x),as.numeric(t$statistic), as.numeric(t$pvalue)))
-      colnames(final)<-c("metabolite","inner_comparison","var_1_mean","var_2_mean","t_welch_statistic","pval")
-      final$sign_t_log_pval = ifelse(final$t_welch_statistic>0, -log10(as.numeric(final$pval)), log10(as.numeric(final$pval)))
-      test_list<-as.data.frame(rbind(test_list,final))
-    }
-    
-    metabs_tab <- merge(test_list, reactMeta, by = "metabolite", all.x = TRUE, all.y = FALSE)
-    # If there was no inner comparison, ensure the column exists and is "All"
-    
-    metabs_tab$sig <- ifelse(
-      metabs_tab$sign_t_log_pval > 1.301, "up",
-      ifelse(metabs_tab$sign_t_log_pval < -1.301, "down", "ns")
-    )
-    
-    # Re-level inner_comparison depending on innerType
-    metabs_tab$inner_comparison <- switch(
-      as.numeric(input$innerType),
-      # 1: three-class continuous
-      factor(metabs_tab$inner_comparison, levels = c("high", "baseline", "low")),
-      # 2: two-class continuous
-      factor(metabs_tab$inner_comparison, levels = c("high", "low")),
-      # 3: binary
-      factor(metabs_tab$inner_comparison, levels = unique(metabs_tab$inner_comparison)),
-      # 4: categorical
-      factor(metabs_tab$inner_comparison, levels = unique(metabs_tab$inner_comparison))
-    )
-    
-    if (inner() == "") {
-      metabs_tab$inner_comparison <- "All"
-    }
-    
-    updateCheckboxGroupInput(session,"innerSelect", choices = unique(data_filt[,2]), selected = unique(data_filt[,2]))
-    
-    output$outerTitle<-renderText(outer)
-    output$innerTitle<-renderText(inner)
-    
-    output$plot1Title <- renderText(
-      paste0(
-        "Significant Reactions Across All Subsystems - ",
-        outer_comp_name,
-        " (", upper_label, " v. ", lower_label, ")"
+      choices_named <- c(
+        setNames(up_lab,   paste0("Significant - ", up_lab)),
+        setNames("ns",     "Not significant"),
+        setNames(down_lab, paste0("Significant - ", down_lab))
       )
-    )
-    
+      
+      updateCheckboxGroupInput(
+        session, "outerSelect",
+        choices  = as.list(choices_named),
+        selected = unname(choices_named)
+      )
+    })
+
     metabs_fin <- reactive({
-      req(exists("metabs_tab"), !is.null(metabs_tab))
-      
-      if (!"inner_comparison" %in% colnames(metabs_tab)) {
-        return(metabs_tab)
+      req(analysis_ready())
+      req(exists("metabs_tab"), !is.null(metabs_tab()))
+      if (!"inner_comparison" %in% colnames(metabs_tab())) {
+        return(metabs_tab())
       }
       
-      if (nrow(metabs_tab) == 0) {
-        return(metabs_tab)
+      if (nrow(metabs_tab()) == 0) {
+        return(metabs_tab())
       }
       
-      inner_levels <- unique(metabs_tab[,"inner_comparison", drop = TRUE])
+      inner_levels <- unique(metabs_tab()[,"inner_comparison", drop = TRUE])
       
       if (length(inner_levels) == 1) {
-        subset(metabs_tab, sig %in% input$outerSelect)
+        subset(metabs_tab(), significant_category %in% input$outerSelect)
       } else {
         subset(
-          metabs_tab,
-          inner_comparison %in% input$innerSelect & sig %in% input$outerSelect
+          metabs_tab(),
+          inner_comparison %in% input$innerSelect & significant_category %in% input$outerSelect
         )
       }
     })
-    
+
     plot1 <- reactive({
-      if(length(unique(metabs_fin()[,"inner_comparison"])) == 1){
-        ggplot(metabs_fin(), aes(x=reorder(subsystem, -sign_t_log_pval), y=sign_t_log_pval, color=sig, fill = sig)) + geom_point(size = 1, position = position_dodge(width=0.5))+
-          theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+geom_hline(yintercept=1.3, size=.05)+geom_hline(yintercept=-1.3, size=.05)+xlab("subsystem")
-      }else{
-        ggplot(metabs_fin(), aes(x=reorder(subsystem, -sign_t_log_pval), y=sign_t_log_pval, color=inner_comparison, fill = inner_comparison)) + geom_point(size = 1, position = position_dodge(width=0.5))+
-          theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+geom_hline(yintercept=1.3, size=.05)+geom_hline(yintercept=-1.3, size=.05)+xlab("subsystem")
-      }
+      req(analysis_ready())
+      mf <- metabs_fin()
       
+      up_lab       <- upper_label_rv()
+      down_lab     <- lower_label_rv()
+      
+      inner_levels <- unique(mf$inner_comparison)
+      
+      if (length(inner_levels) <= 1) {
+        # single inner: as before
+        ggplot(
+          mf,
+          aes(
+            x   = reorder(subsystem, -sign_t_log_pval),
+            y   = sign_t_log_pval,
+            key = metabolite
+          )
+        ) +
+          geom_point(
+            aes(color = significant_category, fill = significant_category),
+            size = 1.4
+          ) +
+          geom_hline(yintercept =  1.3, size = .05) +
+          geom_hline(yintercept = -1.3, size = .05) +
+          xlab("subsystem") +
+          theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+          scale_color_manual(
+            values = c(
+              setNames("#1f77b4", up_lab),
+              setNames("#d62728", down_lab),
+              "ns" = "grey60"
+            ),
+            drop = FALSE
+          ) +
+          scale_fill_manual(
+            values = c(
+              setNames("#1f77b4", up_lab),
+              setNames("#d62728", down_lab),
+              "ns" = "grey80"
+            ),
+            drop = FALSE
+          )
+        
+      } else {
+        # multiple inner: horizontally separated categories, lines per metabolite
+        mf$subsystem_base <- factor(mf$subsystem)
+        n_inner           <- length(inner_levels)
+        
+        base_x  <- as.numeric(mf$subsystem_base)
+        offsets <- seq(-0.3, 0.3, length.out = n_inner)
+        names(offsets) <- inner_levels
+        
+        mf$x_pos <- base_x + offsets[as.character(mf$inner_comparison)]
+        
+        # important: sort by group and x_pos so geom_line sees a proper sequence
+        mf <- mf[order(mf$subsystem, mf$metabolite, mf$x_pos), ]
+        
+        ggplot(
+          mf,
+          aes(
+            x   = x_pos,
+            y   = sign_t_log_pval,
+            key = metabolite
+          )
+        ) +
+          geom_hline(yintercept =  1.3, size = .05) +
+          geom_hline(yintercept = -1.3, size = .05) +
+          
+          geom_line(
+            aes(
+              group = interaction(subsystem, metabolite)
+            ),
+            linewidth = 0.3,
+            color = "grey70",
+            alpha = 0.6
+          ) +
+          
+          geom_point(
+            aes(color = inner_comparison),
+            size = 1.8
+          ) +
+          scale_x_continuous(
+            breaks = sort(unique(base_x)),
+            labels = levels(mf$subsystem_base)
+          ) +
+          xlab("subsystem") +
+          theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+          scale_color_brewer(palette = "Set1", drop = FALSE)
+      }
     })
     
-    output$plot1<- renderPlot({
-      plot1()
+    selected_points_plot1 <- reactive({
+      req(analysis_ready())
+      sel <- event_data("plotly_selected", source = "p1")
+      req(sel)
+      mf <- metabs_fin()
+      
+      # Join on x,y = (subsystem, sign_t_log_pval).
+      # sel$x will be the discrete x value (subsystem label), sel$y the numeric y.
+      as.data.frame(mf[mf$metabolite %in% sel$key, , drop = FALSE])
+    })
+
+    output$plot1 <- renderPlotly({
+      req(analysis_ready())
+      req(plot1())
+      p <- ggplotly(plot1(), source = "p1", tooltip = c("x", "y", "metabolite"))
+      p <- event_register(p, "plotly_selected")
+      p
     })
     
     plot1pdf <- reactive({
@@ -1623,22 +1709,11 @@ server <-function(input,output,session){
     })
     
     output$reacts <- downloadHandler(
-      filename = function() {
-        paste(paste0(input$innerSelect, collapse = "_"),"_",inner, "_",paste0(input$outerSelect, collapse = "_"), outer, '_filtered_reactions.rds', sep='')
-      },
+      filename = "(enter name for fingerprint preparation object).rds",
       content = function(file) {
-        saveRDS(list(metabs_fin(),metaFinal,data.frame(AUC=input$customAUC,Log2FC=input$customFC,FDR=input$customFDR),"cohort"),file)
+        saveRDS(list(metabs_fin(),metaFinal_out(),data.frame(AUC=input$customAUC,Log2FC=input$customFC,FDR=input$customFDR),"cohort"),file)
       }
     )
-    
-    # output$reacts_meta <- downloadHandler(
-    #   filename = function() {
-    #     paste(paste0(input$innerSelect, collapse = "_"),"_",inner, "_",paste0(input$outerSelect, collapse = "_"), outer, '_meta_data.csv', sep='')
-    #   },
-    #   content = function(file) {
-    #     write.csv(metaFinal,file)
-    #   }
-    # )
     
     systems<-reactive({
       if(length(unique(metabs_fin()[,"inner_comparison"])) == 1){
@@ -1678,65 +1753,74 @@ server <-function(input,output,session){
       contentType = "application/pdf"
     )
     
-    observeEvent(input$clickBar, {
-      groupId <- round(input$clickBar$x)
-      output$plot2Title <- renderText(
-        paste0(
-          "Significant Reactions ", outer_comp_name, " - ", systems()[groupId],
-          " (", upper_label, " v. ", lower_label, ")"
-        )
+    ## 1) Subsystem index from clicking plot1 (Plotly)
+    selected_subsystem_index <- reactive({
+      
+      click <- event_data("plotly_click", source = "p1")
+      req(click)
+      print(click)
+      # if subsystem is on x as discrete factor, pointNumber+1 indexes systems()
+      idx <- click$pointNumber[1] + 1
+      idx
+    })
+    
+
+
+      # Table of brushed reactions
+    selected_flux <- reactiveVal(NULL)
+    
+    output$info <- renderReactable({
+      df <- selected_points_plot1()
+      df$var_1_mean      <- signif(as.numeric(df$var_1_mean), 4)
+      df$var_2_mean      <- signif(as.numeric(df$var_2_mean), 4)
+      df$sign_t_log_pval <- signif(as.numeric(df$sign_t_log_pval), 4)
+      df$pval <- signif(as.numeric(df$pval), 4)
+      df$t_welch_statistic <- signif(as.numeric(df$t_welch_statistic), 4)
+
+      reactable::reactable(
+        df,
+        striped    = TRUE,
+        highlight  = TRUE,
+        compact    = TRUE,
+        selection  = "single",
+        onClick    = "select"   # clicking a row selects it
       )
-      plot2 <- reactive({
-        if(length(unique(metabs_fin()[,"inner_comparison"])) == 1){
-          ggplot(subset(metabs_fin(), subset = subsystem == systems()[groupId]), aes(x=inner_comparison, y=sign_t_log_pval, color=sig, fill = sig)) + geom_point(size = 2)+geom_line(aes(group = metabolite, x=inner_comparison),color="grey")+theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+geom_hline(yintercept=1.3, size=.05)+geom_hline(yintercept=-1.3, size=.05)
-        }else{
-          ggplot(subset(metabs_fin(), subset = subsystem == systems()[groupId]), aes(x=inner_comparison, y=sign_t_log_pval, color=inner_comparison, fill = inner_comparison)) + geom_point(size = 2)+geom_line(aes(group = metabolite, x=inner_comparison),color="grey")+theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+geom_hline(yintercept=1.3, size=.05)+geom_hline(yintercept=-1.3, size=.05)
-        }
-        
-      })
-      output$plot2<- renderPlot({
-        plot2()
-      })
-      plot2pdf <- reactive({
-        if(length(unique(metabs_fin()[,"inner_comparison"])) == 1){
-          ggplot(subset(metabs_fin(), subset = subsystem == systems()[groupId]), aes(x=inner_comparison, y=sign_t_log_pval, color=sig, fill = sig)) + geom_point(size = 2)+geom_line(aes(group = metabolite, x=inner_comparison),color="grey")+theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+geom_hline(yintercept=1.3, size=.05)+geom_hline(yintercept=-1.3, size=.05)+ggtitle(paste0("Significant Reactions ",outer, " - ",systems[groupId], " (upper v. lower)"))
-        }else{
-          ggplot(subset(metabs_fin(), subset = subsystem == systems()[groupId]), aes(x=inner_comparison, y=sign_t_log_pval, color=inner_comparison, fill = inner_comparison)) + geom_point(size = 2)+geom_line(aes(group = metabolite, x=inner_comparison),color="grey")+theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+geom_hline(yintercept=1.3, size=.05)+geom_hline(yintercept=-1.3, size=.05)+ggtitle(paste0("Significant Reactions ",outer, " - ",systems[groupId], " (upper v. lower)"))
-        }
-        
-      })
-      output$dlPlot2 <- downloadHandler(
-        filename = function() {
-          paste(str_replace(systems()[groupId]," ","_"),'_',outer,'.pdf', sep='')
-        },
-        content = function(file) {
-          ggsave(file, plot2pdf(), width = 8, height = 12, dpi = 400, units = "in")
-        }
-      )
-      output$info<-renderReactable({
-        metabs_fin<-metabs_fin()
-        metabs_fin$var_1_mean<-round(as.numeric(metabs_fin$var_1_mean), digits=4)
-        metabs_fin$var_2_mean<-round(as.numeric(metabs_fin$var_2_mean), digits=4)
-        metabs_fin$sign_t_log_pval<-round(as.numeric(metabs_fin$sign_t_log_pval), digits=4)
-        reactable(brushedPoints(subset(metabs_fin, subset = subsystem == systems()[groupId]), input$plot_brush2, xvar = "inner_comparison", yvar="sign_t_log_pval"))
-      })
+    })
+    
+    observeEvent(reactable::getReactableState("info", "selected"), {
+      sel <- reactable::getReactableState("info", "selected")
+      df  <- selected_points_plot1()
+      if (!is.null(sel) && length(sel) == 1) {
+        flux_name <- df$metabolite[sel]
+        selected_flux(flux_name)
+        updateSelectizeInput(session, "boxplot", selected = flux_name)
+      }
+    })
+      
+      # Download brushed data as CSV
       data <- reactive({
-        as.data.frame(brushedPoints(subset(metabs_fin, subset = subsystem == systems()[groupId]), input$plot_brush2, xvar = "inner_comparison", yvar="sign_t_log_pval"))
+        as.data.frame(selected_points_plot1())
       })
+      
+      
       output$data <- downloadHandler(
         filename = function() {
-          paste(str_replace(systems()[groupId]," ","_"),'_selected_reactions_',outer, '.csv', sep='')
+          paste("_selected_reactions_", outer, ".csv", sep = "")
         },
         content = function(file) {
-          write.csv(data(),file)
+          write.csv(data(), file, row.names = FALSE)
         }
       )
       
+      # Update boxplot choices from brushed points
       observe({
-        updateSelectizeInput(session, "boxplot",
-                             choices = brushedPoints(subset(metabs_fin(), subset = subsystem == systems()[groupId]), input$plot_brush2, xvar = "inner_comparison", yvar="sign_t_log_pval")$metabolite
-        )})
-    })
+        df <- selected_points_plot1()
+        updateSelectizeInput(
+          session, "boxplot",
+          choices = unique(df$metabolite)
+        )
+      })
+
     
     plot3 <- reactive({
       if (input$boxplot == "") {
@@ -1754,15 +1838,22 @@ server <-function(input,output,session){
       inner_name <- if (has_inner) inner() else "None"
       
       # Base data
+      cohort_flux_mat <- cohort_flux()                 # your flux matrix reactiveVal
+      req(!is.null(cohort_flux_mat))
+      
+      data_filt <- cbind(
+        metaFinal,
+        cohort_flux_mat[rownames(metaFinal), , drop = FALSE]
+      )
+      
       df <- data_filt[, c(colnames(metaFinal), input$boxplot), drop = FALSE]
       colnames(df)[1] <- "outer_group"
       colnames(df)[2] <- "inner"
-      
       # ---------- Parse outer selections for labels ----------
       
       outer_for_vec <- if (!is.null(outerVarFor())) outerVarFor()[[1]] else character(0)
       outer_rev_vec <- if (!is.null(outerVarRev())) outerVarRev()[[1]] else character(0)
-      outer_all     <- c(outer_for_vec, outer_rev_vec)
+      outer_all     <- c(outer_rev_vec,outer_for_vec)
       
       parse_outer <- function(x) {
         parts <- strsplit(x, " - ", fixed = TRUE)[[1]]
@@ -1795,7 +1886,7 @@ server <-function(input,output,session){
         # Map factor levels "upper"/"lower" (or whatever you used) to user-friendly labels
         df$outer_group <- factor(
           outer_level_map[as.character(df$outer_group)],
-          levels = outer_levels
+          levels = rev(outer_levels)
         )
       }
       
@@ -1830,17 +1921,25 @@ server <-function(input,output,session){
         y_star <- y_max + 0.05 * diff(range(sub[[flux_col]], na.rm = TRUE))
         
         p_box <- ggplot(sub, aes(x = outer_group, y = .data[[flux_col]])) +
-          geom_boxplot() +
-          geom_jitter(width = 0.1, alpha = 0.6) +
-          # add one star spanning both boxes
-          geom_segment(aes(
-            x = 1, xend = 2,
-            y = y_star, yend = y_star
-          )) +
-          geom_text(
-            aes(x = 1.5, y = y_star, label = star_label),
-            vjust = -0.3
+          geom_boxplot(
+            width  = 0.5,
+            outlier.shape = NA,
+            fill   = "#e8edff",
+            color  = "#5c6bc0",
+            alpha  = 0.7
           ) +
+          geom_jitter(
+            width  = 0.12,
+            alpha  = 0.5,
+            size   = 1.4,
+            color  = "#3949ab"
+          ) +
+          # add one star spanning both boxes
+          geom_segment(aes(x = 1, xend = 2, y = y_star, yend = y_star),
+                       size = 0.3, color = "#757575") +
+          geom_text(aes(x = 1.5, y = y_star, label = star_label),
+                    vjust = -0.4, size = 3.2, color = "#424242") +
+          radar_theme +
           xlab(if (is.null(cont_name)) "Outer group" else cont_name) +
           ylab(flux_col)
         
@@ -1874,9 +1973,20 @@ server <-function(input,output,session){
         }))
         
         p_box <- ggplot(df, aes(x = outer_group, y = .data[[flux_col]])) +
-          geom_boxplot() +
-          geom_jitter(width = 0.1, alpha = 0.6) +
-          facet_grid(. ~ inner) +
+          geom_boxplot(
+            width  = 0.5,
+            outlier.shape = NA,
+            fill   = "#e8edff",
+            color  = "#5c6bc0",
+            alpha  = 0.7
+          ) +
+          geom_jitter(
+            width  = 0.12,
+            alpha  = 0.5,
+            size   = 1.4,
+            color  = "#3949ab"
+          ) +
+          facet_grid(. ~ inner) + radar_theme +
           xlab(if (is.null(cont_name)) "Outer group" else cont_name) +
           ylab(flux_col)
         
@@ -1932,10 +2042,10 @@ server <-function(input,output,session){
         }
         r_val <- suppressWarnings(cor(sub$outer_cont, sub[[flux_col]], use = "complete.obs"))
         p_corr <- ggplot(sub, aes(x = outer_cont, y = .data[[flux_col]])) +
-          geom_point(alpha = 0.6) +
-          geom_smooth(method = "lm", se = FALSE, color = "red") +
+          geom_point(alpha = 0.55, size = 1.5, color = "#3949ab") +
+          geom_smooth(method = "lm", se = FALSE, color = "#ef6c00", size = 0.7) +
           xlab(cont_name) +
-          ylab(flux_col) +
+          ylab(flux_col) + radar_theme +
           ggtitle(
             paste0("Correlation across full cohort (r = ",
                    sprintf("%.2f", r_val), ")")
@@ -1949,8 +2059,8 @@ server <-function(input,output,session){
           }
           r_val <- suppressWarnings(cor(sub$outer_cont, sub[[flux_col]], use = "complete.obs"))
           ggplot(sub, aes(x = outer_cont, y = .data[[flux_col]])) +
-            geom_point(alpha = 0.6) +
-            geom_smooth(method = "lm", se = FALSE, color = "red") +
+            geom_point(alpha = 0.55, size = 1.5, color = "#3949ab") +
+            geom_smooth(method = "lm", se = FALSE, color = "#ef6c00", size = 0.7) +
             xlab(cont_name) +
             ylab(flux_col) +
             ggtitle(
@@ -1976,9 +2086,7 @@ server <-function(input,output,session){
       }
     )
     
-    #     }
-    #   }
-  })
+
 }
 
 shinyApp(ui,server)

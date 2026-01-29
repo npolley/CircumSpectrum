@@ -8,7 +8,6 @@ inner_var<-list("All")
 outer_var<-"day_637"
 
 fingerprint_object<-readRDS(paste0(outer_var,".rds"))
-metabs<-fingerprint_object[[1]]
 flux<-as.data.frame(as.matrix(fread("beataml2_flux.csv"), rownames = 1))
 
 #For RADAR-SCepter single-cell implementation (WIP)
