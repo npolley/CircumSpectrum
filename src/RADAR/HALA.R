@@ -5,13 +5,14 @@ library(heatmaply)
 library(caret)
 library(inflection)
 library(data.table)
+library(grid)
 
 args <- commandArgs(trailingOnly = TRUE)
 
 fingerprint_name<-args[1]
 
 fingerprint<-readRDS(paste0("../../data/fingerprints/", fingerprint_name,"_.rds"))
-fingerprint_data<-readRDS(paste0("../../data/fingerprint_prep/RADAR_objects/", fingerprint_name,".rds"))
+fingerprint_data<-readRDS(paste0("../../data/fingerprint_prep_objects/RADAR_objects/", fingerprint_name,".rds"))
 
 features<-make.names(fingerprint$All$subsystems$subsystem)
 
@@ -40,24 +41,54 @@ rownames(stats_fin)<-stats_fin$subsystem
 
 subsystems_final<-subset(subsystems_final, subsystem %in% stats_fin$subsystem)
 
-plot1 <- ggplot(subsystems_final, aes(x = as.numeric(sign_t_log_pval), y = reorder(subsystem, -as.numeric(t_welch_statistic)), color = sig, fill = sig)) +
+label_left  <- paste(unlist(fingerprint_data[[5]][[2]]), collapse = " ")
+label_right <- fingerprint_data[[5]][[1]]
+x_center_lab <- paste0("← ", label_left, "           ", label_right, " →")
+
+# Get a numeric range for y to go below it
+y_num <- as.numeric(reorder(subsystems_final$subsystem,
+                            -as.numeric(subsystems_final$t_welch_statistic)))
+y_min <- min(y_num)
+
+plot1 <- ggplot(subsystems_final, aes(
+  x = as.numeric(sign_t_log_pval),
+  y = reorder(subsystem, -as.numeric(t_welch_statistic)),
+  color = sig, fill = sig
+)) +
   geom_point(size = 1, position = position_dodge(width = 0.5)) +
-  theme(
-    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
-    axis.text.y = element_text(face = "bold"),
-    legend.position = "none"  # Remove the legend
-  ) +
   geom_vline(xintercept = 1.3, size = .05) +
   geom_vline(xintercept = -1.3, size = .05) +
   ylab("subsystem") +
-  xlab(expression(atop(paste("← Control", "           ", "Treatment →"), 
-                       "-log(pval) with sign of t-statistic"))) +
-  ggtitle(paste0("Significant Reactions Across All Subsystems")) +
+  xlab("") +
+  labs(title = paste0("Fingerprint Subsystem Models: ", fingerprint_name)) +
   theme(
-    plot.margin = unit(c(0, 0, 0, 0), "mm"),
-    plot.title = element_text(size = 12)  # Set title font size here
+    plot.title = element_text(hjust = 0.5, size = 14), 
+    axis.text.x = element_text(vjust = 0.5, hjust = 1),
+    axis.text.y = element_text(face = "bold"),
+    legend.position = "none",
+    plot.margin = unit(c(1, 0.5, 3, 0.5), "lines")    # more bottom space
+  ) +
+  coord_cartesian(clip = "off") +
+  annotation_custom(
+    grob = textGrob(
+      x_center_lab,
+      gp = gpar(cex = 0.8)
+    ),
+    xmin = 0, xmax = 0,          # centered at x = 0
+    ymin = y_min - 3, ymax = y_min - 3  # shift further down; tweak "-3"
   )
 
+axis_lab <- "-log(pval) with sign of t-statistic"
+
+plot1 <- plot1 +
+  annotation_custom(
+    grob = textGrob(
+      axis_lab,
+      gp = gpar(cex = 1.0)
+    ),
+    xmin = 0, xmax = 0,              # same x (center on 0)
+    ymin = y_min - 5.0, ymax = y_min - 5.0  # a bit lower than arrows
+  )
 gb <- ggplot_build(plot1)
 
 # Extract y-axis labels (top to bottom)

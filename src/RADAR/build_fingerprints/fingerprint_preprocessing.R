@@ -4,11 +4,23 @@ library(smotefamily)
 library(data.table)
 library(dplyr)
 
-inner_var<-list("All")
-outer_var<-"day_637"
+args <- commandArgs(trailingOnly = TRUE)
 
-fingerprint_object<-readRDS(paste0(outer_var,".rds"))
-flux<-as.data.frame(as.matrix(fread("beataml2_flux.csv"), rownames = 1))
+fingerprint_name<-args[1]
+flux_table_name<-args[2]
+
+fingerprint_object<-readRDS(paste0("../../../data/fingerprint_prep_objects/RADAR_objects/",fingerprint_name,".rds"))
+
+if(fingerprint_object[[4]]=="cohort"){
+  flux<-as.data.frame(as.matrix(fread(paste0("../../../data/RADAR_xCheck_cohort/",flux_table_name,"/",flux_table_name,"_flux.csv")), rownames = 1))
+}else if(fingerprint_object[[4]]=="experiment"){
+  flux<-as.data.frame(as.matrix(fread(paste0("../../../data/RADAR_xCheck_experimental_assay/",flux_table_name,"/",flux_table_name,"_flux.csv")), rownames = 1))
+}
+
+reactMeta<-read.csv("../../../data/fingerprint_prep_objects/human_reaction_meta.csv", header = T, row.names = 1)
+reactMetaMouse<-read.csv("../../../data/fingerprint_prep_objects/mouse_reaction_meta.csv", header = T, row.names = 1)
+
+inner_var<-fingerprint_object[[6]]
 
 #For RADAR-SCepter single-cell implementation (WIP)
 if(fingerprint_object[[4]] == "single_cell"){
@@ -30,21 +42,20 @@ if(fingerprint_object[[4]] == "single_cell"){
   meta<-fingerprint_object[[2]]
 }
 
-reactMeta<-read.csv("human_reaction_meta.csv", header = T, row.names = 1)
-reactMetaMouse<-read.csv("mouse_reaction_meta.csv", header = T, row.names = 1)
-
 flux<-flux[rownames(meta),intersect(unique(colnames(flux)),intersect(rownames(reactMeta), rownames(reactMetaMouse)))]
 
 xg<-cbind(meta, flux)
 xg_subset<-split(xg, xg[["inner"]])
 
+#Per inner comparison
 for (i in 1:length(xg_subset)){
-  new_dir<-paste0(getwd(),"/",outer_var,"/",gsub(".rds","",inner_var[[i]]))
+  new_dir<-paste0(getwd(),"/",fingerprint_name,"/",gsub(".rds","",inner_var[[i]]))
   
   if (!dir.exists(new_dir)) {
     dir.create(new_dir, recursive = TRUE)
   }
   
+  #Random variation and upsampling for small sample size
   if(dim(xg_subset[[i]])[1] < 10){
     sub<-data.frame(xg_subset[[i]][,-2])
     class_0 <- sub[sub$outer == "lower", ]
@@ -67,7 +78,9 @@ for (i in 1:length(xg_subset)){
     sub$outer<-factor(ifelse(sub$outer == "upper",1,0))
     sub[,2:dim(sub)[2]]<-predict(preProcess(sub[,2:dim(sub)[2]],method = c("center", "scale")), sub[,2:dim(sub)[2]])
     data_type<-"small_experiment"
-  }else{
+  }
+  #Upsampling for large assays
+  else{
     sub<-xg_subset[[i]][,-2]
     sub$outer<-factor(ifelse(sub$outer == "upper",1,0))
     sub<-data.frame(upSample(x=sub, y = factor(sub$outer)))

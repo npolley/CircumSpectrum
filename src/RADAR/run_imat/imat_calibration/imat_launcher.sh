@@ -26,6 +26,6 @@ echo "Submitted array job: ${ARRAY_JOBID}"
 # OPTIONAL: follow-up job that runs ONLY if all array tasks succeed
 # Uncomment and adapt if needed.
 FOLLOW_JOBID=$(sbatch --parsable \
-   --dependency=afterok:${ARRAY_JOBID} \
+   --dependency=afterany:${ARRAY_JOBID} \
    aggregate_fluxes_launcher.sh "$ASSAY" "$MODEL")
-echo "Submitted follow-up job (afterok): ${FOLLOW_JOBID}"
+echo "Submitted follow-up job (afterany): ${FOLLOW_JOBID}"

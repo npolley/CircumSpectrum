@@ -6,21 +6,41 @@ library(caTools)
 library(matrixTests)
 library(Boruta)
 
-# args<-commandArgs(trailingOnly = TRUE)
-# x<-as.integer(args[1])
+args<-commandArgs(trailingOnly = TRUE)
+fingerprint_name<-as.integer(args[1])
 
-#Read in Files from "temp" folder prodeced by fingerprint_generator_1
-file_list <- list.files(pattern = "\\.rds$", full.names = TRUE)
+fingerprint_object<-readRDS(paste0("../../../data/fingerprint_prep_objects/RADAR_objects/",fingerprint_name,".rds"))
+inner_var<-fingerprint_object[[6]]
 
-perf_list <- list()
-models_list<-list()
-vals_list<-list()
-tuneplots_list<-list()
-data <- readRDS(file_list[[1]])
-assay<-data[[1]]
-assay_type<-data[[3]]
-model_prim<-data[[5]]
-inner<-gsub(".rds",".csv",data[[2]])
+#Read in Files from "temp" folder produced by fingerprint_generator_1
+for(k in 1:length(inner_var)){
+  temp_dir <- file.path(
+    getwd(),           # or a fixed base directory if needed
+    fingerprint_name,
+    inner_var[[k]],
+    "temp"
+  )
+  
+  file_list <- list.files(
+    path       = temp_dir,
+    pattern    = "\\.rds$",
+    full.names = TRUE
+  )
+  
+  if (length(file_list) == 0) {
+    warning("No .rds files found in ", temp_dir)
+    next
+  }
+  
+  perf_list   <- list()
+  models_list <- list()
+  vals_list   <- list()
+  
+  data       <- readRDS(file_list[[1]])
+  assay      <- data[[1]]
+  assay_type <- data[[3]]
+  model_prim <- data[[5]]
+  inner      <- gsub("\\.rds$", ".csv", data[[2]])
 
 i<-1
 for (file in file_list) {
@@ -62,12 +82,13 @@ models_list<-models_list#[-c(rm)]
 
 total_fingerprints<-list()
 if(data[[3]] != "small_experiment"){
-  total_fingerprints[["All"]]<-list(type=assay_type, assay=assay, inner=gsub(".rds","",inner) , fingerprints_primary=models_list, auc_primary=perf_subsystem_unfilt, subsystems=perf_subsystem_unfilt,
-                                    self_score_primary=vals_subsystem, train_primary=read.csv(inner,header=T,row.names=1)
+  total_fingerprints[["All"]]<-list(type=assay_type, assay=assay, inner=inner , fingerprints_primary=models_list, auc_primary=perf_subsystem_unfilt, subsystems=perf_subsystem_unfilt,
+                                    self_score_primary=vals_subsystem, train_primary=read.csv(paste0(temp_dir,"/",inner,".csv"),header=T,row.names=1)
   )
 }else{
-  total_fingerprints[["All"]]<-list(type=assay_type, assay=assay, inner=gsub(".rds","",inner) , fingerprints_primary=models_list, auc_primary=perf_subsystem_unfilt, subsystems=perf_subsystem_unfilt, 
-                                    self_score_primary=vals_subsystem,  train_primary=read.csv(inner,header=T,row.names=1))
+  total_fingerprints[["All"]]<-list(type=assay_type, assay=assay, inner=inner , fingerprints_primary=models_list, auc_primary=perf_subsystem_unfilt, subsystems=perf_subsystem_unfilt, 
+                                    self_score_primary=vals_subsystem,  train_primary=read.csv(paste0(temp_dir,"/",inner,".csv"),header=T,row.names=1))
 }
 
 saveRDS(total_fingerprints, paste0(assay,"_.rds"))
+}

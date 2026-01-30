@@ -14,23 +14,39 @@ library(randomForest)
 
 args<-commandArgs(trailingOnly = TRUE)
 x<-as.integer(args[1])
+fingerprint_name<-args[2]
 
-csv_files <- list.files(pattern = "*.rds")
-xg_subset<-list()
+reactMeta<-read.csv("../../../data/fingerprint_prep_objects/human_reaction_meta.csv", header = T, row.names = 1)
+reactMetaMouse<-read.csv("../../../data/fingerprint_prep_objects/mouse_reaction_meta.csv", header = T, row.names = 1)
 
-for (file in csv_files) {
-  # Read the CSV file into a dataframe
-  df <- readRDS(file)
+# Base directory that contains the fingerprint_name folder
+base_dir <- getwd()   # or a fixed path if needed
+
+fp_dir <- file.path(base_dir, fingerprint_name)
+
+# List immediate subdirectories inside fingerprint_name (each inner)
+inner_dirs <- list.dirs(path = fp_dir, full.names = TRUE, recursive = FALSE)
+
+xg_subset <- list()
+
+for (inner_dir in inner_dirs) {
+  inner_name <- basename(inner_dir)  # e.g. "MET_cervical_11_days"
   
-  # Append the dataframe to the list
-  xg_subset[[file]] <- df
+  rds_path <- file.path(inner_dir, paste0(inner_name, ".rds"))
+  
+  if (!file.exists(rds_path)) {
+    warning("RDS not found for inner: ", inner_name, " at ", rds_path)
+    next
+  }
+  
+  df <- readRDS(rds_path)
+  
+  # Use inner_name as the list key
+  xg_subset[[inner_name]] <- df
 }
 
 for (i in 1:length(xg_subset)){
   sub<-xg_subset[[i]][["data"]]
-  
-  reactMeta<-read.csv("human_reaction_meta.csv", header = T, row.names = 1)
-  reactMetaMouse<-read.csv("mouse_reaction_meta.csv", header = T, row.names = 1)
   
   Test_tot<-factor(sub[,1])
   final_eval<-list()
@@ -49,15 +65,15 @@ for (i in 1:length(xg_subset)){
   train<-data.frame(sub[,c("outer",selected_features)])
   train$outer <- factor(ifelse(train$outer == 1, "Class1", "Class0"), levels = c("Class1", "Class0"))
   
-  class1_data <- subset(train, outer == "Class1")[,-1]
-  class1_numeric <- as.data.frame(lapply(class1_data, as.numeric))
-  class1 <- as.matrix(class1_numeric)
-  
-  class0_data <- subset(train, outer == "Class0")[,-1]
-  class0_numeric <- as.data.frame(lapply(class0_data, as.numeric))
-  class0 <- as.matrix(class0_numeric)
-  
-  t_test<-col_t_welch(class1, class0)
+  # class1_data <- subset(train, outer == "Class1")[,-1]
+  # class1_numeric <- as.data.frame(lapply(class1_data, as.numeric))
+  # class1 <- as.matrix(class1_numeric)
+  # 
+  # class0_data <- subset(train, outer == "Class0")[,-1]
+  # class0_numeric <- as.data.frame(lapply(class0_data, as.numeric))
+  # class0 <- as.matrix(class0_numeric)
+  # 
+  # t_test<-col_t_welch(class1, class0)
   
   #selected_features<-rownames(subset(t_test, pvalue <	0.05)) 
   #boruta_res <- Boruta(outer ~ ., data = train[,c("outer",rownames(subset(t_test, pvalue < 0.05)))], pValue=0.001, doTrace = 0)
@@ -206,8 +222,8 @@ for (i in 1:length(xg_subset)){
   sys<-subsystems[[x]]
   subsystem_vals <- data.frame(setNames(data.frame(preds), sys))
   
-  out_1<-list(assay=basename(dirname(getwd())), inner= names(xg_subset)[[i]], type=xg_subset[[i]][["type"]], auc_stats=auc_stats, model=pre_classifier, subsystem_vals=subsystem_vals)
-  saveRDS(out_1, paste0("temp/",basename(dirname(getwd())),"_",gsub(".rds","",names(xg_subset)[i]),"_",colnames(subsystem_vals)[1],"_classifier.rds"))
+  out_1<-list(assay=fingerprint_name, inner= names(xg_subset)[[i]], type=xg_subset[[i]][["type"]], auc_stats=auc_stats, model=pre_classifier, subsystem_vals=subsystem_vals)
+  saveRDS(out_1, paste0(fingerprint_name,"/",gsub(".rds","",names(xg_subset)[i]),"/temp/",fingerprint_name,"_",names(xg_subset)[i],"_",colnames(subsystem_vals)[1],"_classifier.rds"))
 }
 
 

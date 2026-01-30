@@ -4,7 +4,7 @@
 # If whiptail is not available, you can swap it with dialog and adjust options.
 
 
-ASSAY_DIR="../../data/fingerprint_prep/RADAR_objects/"
+ASSAY_DIR="../../data/fingerprint_prep_objects/RADAR_objects/"
 
 # Get unique filenames matching *.rds
 mapfile -t files < <(find "$ASSAY_DIR" -maxdepth 1 -type f -name "*.rds" -printf "%f\n" | sort -u)

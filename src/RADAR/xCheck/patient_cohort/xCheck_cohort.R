@@ -1,17 +1,11 @@
-library(pROC)
 library(caTools)
 library(matrixTests)
 library(ggplot2)
 library(plotly)
 library(shinydashboard)
-library(stringr)
 library(reactable)
-library(shinycustomloader)
 library(cowplot)
 library(shinyWidgets)
-library(cicerone) 
-library(rlist)
-library(funprog)
 library(data.table)
 library(MatrixGenerics)
 
@@ -26,7 +20,26 @@ header <- dashboardHeader(
 )
 
 body <- dashboardBody(
+  #Cosmetic CSS and javascript elements
   tags$head(
+    tags$style(HTML("
+  .fade-in-up {
+    opacity: 0;
+    transform: translateY(10px);
+    animation: fadeInUp 0.4s ease-out forwards;
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+")),
     tags$style(HTML("
     #global-loading-text {
       color: #e0e7ff; /* bright, cool lavender-blue */
@@ -453,6 +466,7 @@ body <- dashboardBody(
   ),
   
   fluidRow(
+    class = "fade-in-up",
     style = "margin-top: 10px;",
     column(
       width = 12,
@@ -528,18 +542,141 @@ body <- dashboardBody(
     )
   ),
   
-  fluidRow(style = "margin-top: 10px;",column(width=12,box(
-    width = 12, status = "primary", solidHeader = TRUE,
-    title = textOutput("plot1Title"),
-    plotlyOutput("plot1", height = 650),
-    downloadLink("dlPlot1", "Download Plot as PDF | "),
-    downloadLink("reacts", "Download Fingerprint Data")
-  )) 
+  conditionalPanel(
+    condition = "input.submitReport > 0 || input.submitReportDefault > 0",
+    
+    # Row 1: plot + guide + downloads
+    fluidRow(
+      class = "fade-in-up",
+      style = "margin-top: 10px;",
+      column(
+        width = 12,
+        box(
+          width = 12, status = "primary", solidHeader = TRUE,
+          title = textOutput("plot1Title"),
+          plotlyOutput("plot1", height = 650),
+          
+          tags$div(
+            style = "margin-top: 10px; padding: 10px 12px; border-radius: 6px;
+                   background-color: #e8ebff;
+                   border: 1px solid #d1d7ff;
+                   font-size: 13px; line-height: 1.4; color: #273043;",
+            tags$div(
+              style = "display: flex; align-items: flex-start; gap: 8px;",
+              tags$span(
+                "\u2139",
+                style = "font-size: 18px; line-height: 1;
+                       color: var(--radar-primary);"
+              ),
+              tags$div(
+                tags$div(
+                  "How to use this plot:",
+                  style = "font-weight: 600; margin-bottom: 3px;"
+                ),
+                tags$ul(
+                  style = "padding-left: 18px; margin: 0;",
+                  tags$li("Enlarge regions of interest using the zoom and pan tools."),
+                  tags$li("Use the box or lasso selection tools in the Plotly toolbar to select reactions."),
+                  tags$li("Click on selection to analyse differential flux across the selected comparisons.")
+                )
+              )
+            )
+          ),
+          
+          downloadLink("dlPlot1", "Download Plot as PDF"),
+          div(
+            style = "margin-top: 10px;",
+            downloadButton(
+              "reacts",
+              "Download Fingerprint Preparation Data",
+              style = "width: 100%;"
+            )
+          )
+        )
+      )
+    ),
+    
+    # Row 2: outer/inner selection
+    fluidRow(
+      class = "fade-in-up",
+      column(
+        width = 4,
+        style = "display: flex;",  # make the column stretch
+        box(
+          title = textOutput("outerTitle"),
+          solidHeader = TRUE, status = "primary",
+          width = 12,
+          style = "flex: 1;",      # box fills the column height
+          checkboxGroupInput(
+            "outerSelect",
+            label = NULL,
+            choices = c(),
+            selected = NULL
+          )
+        )
+      ),
+      
+      column(
+        width = 4,
+        style = "display: flex;",
+        box(
+          title = textOutput("innerTitle"),
+          solidHeader = TRUE, status = "primary",
+          width = 12,
+          style = "flex: 1;",
+          checkboxGroupInput(
+            "innerSelect",
+            label = NULL,
+            choices = c("high", "baseline", "low")
+          )
+        )
+      )
+    )
   ),
-  fluidRow(column(width=8,box(title=textOutput("outerTitle"), solidHeader = TRUE,status="primary",checkboxGroupInput("outerSelect", label = NULL, choices = c(), selected=NULL)),box(title=textOutput("innerTitle"), solidHeader = TRUE, status="primary",checkboxGroupInput("innerSelect", label = NULL, choices = c("high","baseline","low"))))),
-  fluidRow(column(style = "display:none;",width=12,box(width=12,selectizeInput("boxplot", "Select Metabolic Flux to Analyze", choices = c(""))))),
-  fluidRow(column(width=12,box(width=12,reactableOutput("info")))),
-  fluidRow(column(width=12,box(width=12,withLoader(plotOutput("plot3", height = 500), type = "html", loader = "dnaspin"),actionLink("invert","Invert Boxplot | "), downloadLink("dlPlot3", "Download Plot as PDF"))))
+  
+  conditionalPanel(
+    condition = "output.selected_points_n > 0",
+    
+    fluidRow(
+      class = "fade-in-up",
+      column(
+        style = "display:none;",
+        width = 12,
+        box(
+          width = 12,
+          selectizeInput(
+            "boxplot",
+            "Select Metabolic Flux to Analyze",
+            choices = c("")
+          )
+        )
+      )
+    ),
+    
+    fluidRow(
+      class = "fade-in-up",
+      column(
+        width = 12,
+        box(
+          width = 12,
+          reactableOutput("info")
+        )
+      )
+    ),
+    
+    fluidRow(
+      class = "fade-in-up",
+      column(
+        width = 12,
+        box(
+          width = 12,
+          plotOutput("plot3", height = 500),
+          actionLink("invert", "Invert Boxplot | "),
+          downloadLink("dlPlot3", "Download Plot as PDF")
+        )
+      )
+    )
+  )
   
 )
 
@@ -907,7 +1044,7 @@ server <-function(input,output,session){
         selector = "#stratification",
         where = "afterEnd",
         immediate = TRUE,
-        ui = fluidRow(column(width=6,box(width=12,title="Select Outer Comparison",solidHeader = TRUE, status="primary",
+        ui = fluidRow(class = "fade-in-up",column(width=6,box(width=12,title="Select Outer Comparison",solidHeader = TRUE, status="primary",
                                          box(width = 12, selectInput(label="Select Outer Comparison Type", inputId = "outerType", choices = c("Three-Class Continuous (from 25th and 75th percentiles)"=1,"Two-Class Continuous (from median)"=2, "Two-Class Binary (yes/no, positive/negative)"=3, "Categorical"=4),selected=1)),
                                          box(width = 12, selectizeInput(label="Select Variable Type", inputId = "outerVarType", choices = c("Clinical Data"=1,"Gene Expression"=2),selected=1)),
                                          box(width = 6, virtualSelectInput(label="Select Forward Variable(s)", inputId = "outerVarFor", choices = colnames(clinical),showValueAsTags = TRUE, search = TRUE, multiple = TRUE)),
@@ -936,6 +1073,13 @@ server <-function(input,output,session){
   
   observeEvent(list(input$cohort_select,input$outerType,input$outerVarType),{
     req(input$outerType)
+    session$sendCustomMessage("toggle-loading", TRUE)
+    session$sendCustomMessage("loading-text", "Reading cohort registry…")
+    on.exit({
+      session$sendCustomMessage("toggle-loading", FALSE)
+      session$sendCustomMessage("loading-text", "Cohort loaded successfully")
+    }, add = TRUE)
+    session$sendCustomMessage("loading-text", "Updating outer parameter choices…")
     if(input$outerType == 1){
       if(input$outerVarType == 1){
         updateVirtualSelect("outerVarFor", label = "Select Upper Variable(s)", choices = choices_clinical_3_class()[subset(meta_clinical(), type == "continuous")$variable])
@@ -984,6 +1128,7 @@ server <-function(input,output,session){
         where     = "beforeEnd",
         immediate = TRUE,
         ui = column(
+          class = "fade-in-up",
           width = 6,
           box(
             width = 12,
@@ -1695,6 +1840,23 @@ server <-function(input,output,session){
       # sel$x will be the discrete x value (subsystem label), sel$y the numeric y.
       as.data.frame(mf[mf$metabolite %in% sel$key, , drop = FALSE])
     })
+    
+    output$selected_points_n <- reactive({
+      sp <- selected_points_plot1()
+      
+      # handle NULL or unexpected types safely
+      if (is.null(sp)) return(0)
+      if (is.data.frame(sp) || is.matrix(sp)) {
+        return(nrow(sp))
+      }
+      if (is.list(sp) && !is.data.frame(sp)) {
+        # some plotly selections come as a list; adjust as needed
+        return(length(sp$x))  # or another appropriate element
+      }
+      
+      0
+    })
+    outputOptions(output, "selected_points_n", suspendWhenHidden = FALSE)
 
     output$plot1 <- renderPlotly({
       req(analysis_ready())
@@ -1705,13 +1867,13 @@ server <-function(input,output,session){
     })
     
     plot1pdf <- reactive({
-      ggplot(metabs_fin(), aes(x=as.numeric(t_welch_statistic), y=reorder(subsystem, -as.numeric(t_welch_statistic)), color=sig, fill = sig)) + geom_point(size = 1, position = position_dodge(width=0.5))+theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+geom_vline(xintercept=1.3, size=.05)+geom_vline(xintercept=-1.3, size=.05)+ylab("subsystem")+xlab("log(pval) with sign of t-statistic")+ggtitle(paste0("Significant Reactions Across All Subsystems - (assay_1 v. assay_2)"))
+      ggplot(metabs_fin(), aes(x=as.numeric(t_welch_statistic), y=reorder(subsystem, -as.numeric(t_welch_statistic)), color=significant_category, fill = significant_category)) + geom_point(size = 1, position = position_dodge(width=0.5))+theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))+geom_vline(xintercept=1.3, size=.05)+geom_vline(xintercept=-1.3, size=.05)+ylab("subsystem")+xlab("log(pval) with sign of t-statistic")+ggtitle(paste0("Significant Reactions Across All Subsystems - (",upper_label_rv()," v. ",lower_label_rv(),")"))
     })
     
     output$reacts <- downloadHandler(
       filename = "(enter name for fingerprint preparation object).rds",
       content = function(file) {
-        saveRDS(list(metabs_fin(),metaFinal_out(),data.frame(AUC=input$customAUC,Log2FC=input$customFC,FDR=input$customFDR),"cohort"),file)
+        saveRDS(list(metabs_fin(),metaFinal_out(),data.frame(AUC=input$customAUC,Log2FC=input$customFC,FDR=input$customFDR),"cohort",list(upper_label_rv(),lower_label_rv()),list(unique(metabs_fin()$inner_comparison))),file)
       }
     )
     
@@ -1829,6 +1991,14 @@ server <-function(input,output,session){
       
       metaFinal <- metaFinal_out()
       req(metaFinal)
+      
+      session$sendCustomMessage("toggle-loading", TRUE)
+      session$sendCustomMessage("loading-text", "Reading cohort registry…")
+      on.exit({
+        session$sendCustomMessage("toggle-loading", FALSE)
+        session$sendCustomMessage("loading-text", "Cohort loaded successfully")
+      }, add = TRUE)
+      session$sendCustomMessage("loading-text", "Loading plots…")
       
       outer_var <- colnames(metaFinal)[1]
       inner_var <- colnames(metaFinal)[2]
