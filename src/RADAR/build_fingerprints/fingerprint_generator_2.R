@@ -7,7 +7,7 @@ library(matrixTests)
 library(Boruta)
 
 args<-commandArgs(trailingOnly = TRUE)
-fingerprint_name<-as.integer(args[1])
+fingerprint_name<-args[1]
 
 fingerprint_object<-readRDS(paste0("../../../data/fingerprint_prep_objects/RADAR_objects/",fingerprint_name,".rds"))
 inner_var<-fingerprint_object[[6]]
