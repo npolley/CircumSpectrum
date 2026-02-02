@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="img/radar_xcheck_logo.jpeg" alt="RADAR | xCheck logo" width="420">
+  <img src="img/radar_xcheck.png" alt="RADAR | xCheck logo" width="420">
 </p>
 
-<h1 align="center">RADAR | xCheck (patient cohort implementation)</h1>
+<h1 align="center">RADAR | xCheck
 
 RADAR | xCheck is an R Shiny dashboard for interactive exploration of iMAT flux output across multiple patient cohorts. The app implements a cohort registry, stratification-aware outer and inner comparisons, and an updated visual design with animated loading states, modern typography, and streamlined control panels.  
 
