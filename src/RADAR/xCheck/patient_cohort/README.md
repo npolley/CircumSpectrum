@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="../../../img/radar_xcheck.png" alt="RADAR | xCheck logo" width="420">
+  <img src="../../../../img/radar_xcheck.png" alt="RADAR | xCheck logo" width="420">
 </p>
 
 <h1 align="center">RADAR | xCheck
