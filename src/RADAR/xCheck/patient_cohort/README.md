@@ -156,9 +156,9 @@ A PDF version of this plot is generated and downloadable as `all_subsystems.pdf`
 - Selecting a row in this table sets the current `flux_name` and updates the boxplot variable selector.  
 - The brushed subset can be exported as CSV via the “selected reactions” download handler.  
 
-### Plot 3 – Boxplots and correlation view
+### Plot 2 – Boxplots and correlation view
 
-Plot 3 focuses on a single selected reaction:
+Plot 2 focuses on a single selected reaction:
 
 - Boxplot view:
   - Compares flux distributions between outer groups, optionally faceted across inner categories.  
