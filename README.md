@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="img/circumspectrum.jpg" alt="CircumSpectrum logo" width="350">
+  <img src="img/circumspectrum.png" alt="CircumSpectrum logo" width="350">
 </p>
 
 <h1 align="center">CircumSpectrum</h1>
