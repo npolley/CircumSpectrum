@@ -5,8 +5,8 @@
 #SBATCH --nodes=1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=15G
-#SBATCH --array=1-142
+#SBATCH --array=[1-142]
 
 module load statistics/R/4.3.0
-Rscript fingerprint_generator_1.R "$SLURM_ARRAY_TASK_ID" "$OBJ"
+Rscript fingerprint_generator_1.R $SLURM_ARRAY_TASK_ID
 
