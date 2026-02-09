@@ -306,6 +306,16 @@ body <- dashboardBody(
   .coralie-line:nth-child(10) { left: 46%;  top: 40%; animation-delay: 1.9s; }
 ")),
     
+  tags$script(HTML("
+  Shiny.addCustomMessageHandler('resize-tier1-bar', function() {
+    var el = document.getElementById('tier1_subsystem_bar');
+    if (!el) return;
+    var rect = el.getBoundingClientRect();
+    // Example: ensure minimum 400px but no more than 80% viewport
+    var h = Math.max(400, Math.min(window.innerHeight * 0.8, rect.height));
+    el.style.height = h + 'px';
+  });
+")),
     # JS handlers to show/hide + update text from server
   tags$script(HTML("
   Shiny.addCustomMessageHandler('coralie-toggle-loading', function(show) {
@@ -543,6 +553,9 @@ div(
       ),
       fluidRow(
         div(id = "tier1_analysis_placeholder")
+      ),
+      fluidRow(
+        div(id = "tier1_corplot_grid_placeholder")
       )
     ),
     tabItem(
@@ -584,6 +597,12 @@ server <- function(input, output, session) {
   analysis_panel_inserted_1 <- reactiveVal(FALSE)
   analysis_done_1           <- reactiveVal(FALSE)
   tier1_cor_data            <- reactiveVal(NULL)
+  
+  tier2_selection <- reactiveVal(NULL)
+  tier2_panel_inserted <- reactiveVal(FALSE)
+  
+  tier2_x_range <- reactiveVal(NULL)
+  tier2_y_range <- reactiveVal(NULL)
   
   set_coralie_progress <- function(session, pct, subtext = NULL) {
     session$sendCustomMessage("coralie-loading-progress", round(pct))
@@ -1169,7 +1188,7 @@ server <- function(input, output, session) {
         data.frame(
           Reference_Assay     = ref_id,
           Fingerprint_Pair    = paste(cor_df$Var1, cor_df$Var2, sep = "-"),
-          pearson_Correlation = cor_df$Freq,
+          Pearson_Correlation = cor_df$Freq,
           stringsAsFactors    = FALSE
         )
       })
@@ -1191,6 +1210,45 @@ server <- function(input, output, session) {
     
     # insert panels (unchanged)
     if (!analysis_panel_inserted_1()) {
+      ref1_lab <- ref_ids[1]
+      ref2_lab <- ref_ids[2]
+      
+      controls_col <- if (length(ref_ids) >= 2) {
+        column(
+          width = 3,
+          radioButtons(
+            "subsystem_bar_mode",
+            "View:",
+            choices = setNames(
+              c("high", "low", "similar"),
+              c(
+                paste("Significantly higher in", ref1_lab),
+                paste("Significantly higher in", ref2_lab),
+                paste("Similar and high in", ref1_lab, "and", ref2_lab)
+              )
+            ),
+            selected = "high"
+          ),
+          br(),
+          selectInput(
+            "subsystem_bar_sort",
+            "Sort bars by:",
+            choices = setNames(
+              c("ref1", "ref2", "diff", "pval"),
+              c(
+                paste("Average in", ref1_lab),
+                paste("Average in", ref2_lab),
+                "Absolute difference",
+                "Significance (p-value)"
+              )
+            ),
+            selected = "ref1"
+          )
+        )
+      } else {
+        NULL
+      }
+      
       insertUI(
         selector = "#tier1_analysis_placeholder",
         where    = "afterEnd",
@@ -1201,6 +1259,7 @@ server <- function(input, output, session) {
             box(
               width = 12, status = "primary", solidHeader = TRUE,
               title = "CORALIE - Tier I Correlation Plots",
+              id    = "tier1_corrplot_grid_box", 
               plotly::plotlyOutput("tier1_corrplot_grid")
             ),
             box(
@@ -1210,24 +1269,12 @@ server <- function(input, output, session) {
             ),
             box(
               width = 12, status = "primary", solidHeader = TRUE,
-              title = "Subsystem correlations across reference assays",
+              title = " CORALIE - Tier I Changes in Overall Subsystem Correlations Across Reference Assays",
               fluidRow(
+                controls_col,
                 column(
-                  width = 3,
-                  radioButtons(
-                    "subsystem_bar_mode",
-                    "View:",
-                    choices = c(
-                      "Significant higher in first reference"  = "high",
-                      "Significant higher in second reference" = "low",
-                      "Similar high in both"                   = "similar"
-                    ),
-                    selected = "high"
-                  )
-                ),
-                column(
-                  width = 9,
-                  plotly::plotlyOutput("tier1_subsystem_bar")
+                  width = if (is.null(controls_col)) 12 else 9,
+                  plotly::plotlyOutput("tier1_subsystem_bar", height = "70vh")
                 )
               )
             )
@@ -1254,7 +1301,6 @@ server <- function(input, output, session) {
     
     cor_long <- dat$cor_long
     
-    # one panel per reference assay, interactive heatmap
     p <- ggplot(cor_long, aes(
       x     = Fingerprint1,
       y     = Fingerprint2,
@@ -1269,17 +1315,13 @@ server <- function(input, output, session) {
       geom_tile(color = "grey90") +
       scale_fill_gradient2(
         limits = c(-1, 1),
-        low    = "#B2182B",  
+        low    = "#B2182B",
         mid    = "white",
-        high   = "#2166AC"   
+        high   = "#2166AC"
       ) +
       facet_wrap(~ Reference_Assay) +
       coord_equal() +
-      labs(
-        x = NULL,
-        y = NULL,
-        fill = "r"
-      ) +
+      labs(x = NULL, y = NULL, fill = "r") +
       ggtitle("Correlation matrices of fingerprint predictions") +
       theme_minimal(base_size = 11) +
       theme(
@@ -1289,11 +1331,380 @@ server <- function(input, output, session) {
         plot.title   = element_text(hjust = 0.5, face = "bold")
       )
     
-    plotly::ggplotly(p, tooltip = "text") |>
+    plotly::ggplotly(
+      p,
+      tooltip = "text",
+      source  = "tier1_corr_grid",
+      height  = 350
+    ) |>
+      plotly::event_register("plotly_click") |>
       plotly::layout(
         legend = list(orientation = "h", x = 0.5, xanchor = "center"),
         margin = list(l = 60, r = 20, b = 80, t = 60)
       )
+  })
+  
+  observeEvent(tier2_selection(), {
+    sel <- tier2_selection()
+    req(sel)
+    
+    if (!tier2_panel_inserted()) {
+      insertUI(
+        selector = "#tier1_analysis_placeholder",
+        where    = "afterEnd",
+        ui = fluidRow(
+          class = "fade-in-up",
+          id    = "tier2_panel_row",
+          column(
+            width = 12,
+            box(
+              width = 12, status = "primary", solidHeader = TRUE,
+              title = "CORALIE - Tier II Correlation Analysis of Subsystem Models Between Two Fingerprints",
+              # first row: full-width plot
+              fluidRow(
+                column(
+                  width = 12,
+                  plotlyOutput("tier2_subsystem_heatmap", height = "650px")
+                )
+              ),
+              br(),
+              # second row: controls below the plot
+              fluidRow(
+                column(
+                  width = 12,
+                  div(
+                    style = "display: flex; gap: 20px; align-items: center; flex-wrap: wrap;",
+                    div(
+                      style = "min-width: 260px;",
+                      div(
+                        style = "min-width: 260px;",
+                        sliderInput(
+                          "tier2_corr_thresh",
+                          "Correlation threshold:",
+                          min   = -1,
+                          max   =  1,
+                          value =  0.5,
+                          step  = 0.01
+                        )
+                      ),
+                      div(
+                        style = "min-width: 220px;",
+                        radioButtons(
+                          "tier2_corr_mode",
+                          "Keep subsystems with:",
+                          choices  = c(
+                            "Any value ≥ threshold" = "gte",
+                            "Any value ≤ threshold" = "lte"
+                          ),
+                          selected = "gte",
+                          inline   = FALSE
+                        )
+                      )
+                    ),
+                    div(
+                      style = "min-width: 220px;",
+                      checkboxInput(
+                        "tier2_run_ttest",
+                        "Filter subsystems by t-test (p < 0.05)",
+                        value = TRUE
+                      )
+                    ),
+                    div(
+                      style = "min-width: 260px;",
+                      radioButtons(
+                        "tier2_order_mode",
+                        "Order features by:",
+                        choices  = c(
+                          "Name (alphabetical)"           = "name",
+                          "Hierarchical clustering"       = "hclust",
+                          "Optimize diagonal correlation" = "diag"
+                        ),
+                        selected = "hclust"
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        ),
+        immediate = TRUE
+      )
+      tier2_panel_inserted(TRUE)
+    }
+  })
+  
+  output$tier2_subsystem_heatmap <- plotly::renderPlotly({
+    sel <- tier2_selection()
+    req(sel)
+    req(!is.null(sel$ref_id), !is.null(sel$fp1), !is.null(sel$fp2))
+    
+    ref_id <- sel$ref_id
+    fp1    <- sel$fp1
+    fp2    <- sel$fp2
+    
+    dat <- tier1_cor_data()
+    req(dat, dat$ex_subsystems_all)
+    ex_subsystems_all <- dat$ex_subsystems_all
+    validate(need(ref_id %in% names(ex_subsystems_all),
+                  "Selected reference assay not found in Tier I data."))
+    subsystem_scores <- ex_subsystems_all[[ref_id]]
+    validate(need(fp1 %in% names(subsystem_scores) && fp2 %in% names(subsystem_scores),
+                  "Selected fingerprints not found in subsystem scores."))
+    
+    # containers from Tier I
+    ex_subsystems_all <- dat$ex_subsystems_all   # list: ref -> list(fp -> df(samples × subsystems))
+    ref_scores_list   <- dat$total_scores_all    # if you stored per-ref total_scores; if not, recompute below
+    
+    subsystem_scores <- ex_subsystems_all[[ref_id]]
+    req(subsystem_scores[[fp1]], subsystem_scores[[fp2]])
+    
+    # get per-fingerprint scores (sample × 1) used in Tier I; recompute if not cached
+    if (!is.null(ref_scores_list) && !is.null(ref_scores_list[[ref_id]])) {
+      total_scores <- ref_scores_list[[ref_id]]
+    } else {
+      # fallback: mean of subsystem predictions per fingerprint
+      total_scores <- lapply(subsystem_scores, function(df_sub) {
+        score <- rowMeans(df_sub, na.rm = TRUE)
+        rng <- range(score, na.rm = TRUE)
+        if (diff(rng) == 0) rep(0, length(score)) else (score - rng[1]) / (rng[2] - rng[1])
+      })
+    }
+    
+    # Base correlation table between subsystems of fp1 and fp2
+    cor_table_subsystem <- cor(subsystem_scores[[fp1]], subsystem_scores[[fp2]],
+                               use = "pairwise.complete.obs", method = "pearson")
+    cor_table_subsystem <- cor_table_subsystem[rowSums(!is.na(cor_table_subsystem)) > 0, , drop = FALSE]
+    cor_table_subsystem <- cor_table_subsystem[, colSums(!is.na(cor_table_subsystem)) > 0, drop = FALSE]
+    validate(need(nrow(cor_table_subsystem) > 0 && ncol(cor_table_subsystem) > 0,
+                  "No overlapping subsystems between the selected fingerprints."))
+    
+    common_subs <- intersect(rownames(cor_table_subsystem), colnames(cor_table_subsystem))
+    validate(need(length(common_subs) > 0,
+                  "No common subsystems between the two fingerprints."))
+    
+    cor_table_subsystem <- cor_table_subsystem[common_subs, common_subs, drop = FALSE]
+    
+    # Optional t-test filtering
+    if (isTRUE(input$tier2_run_ttest)) {
+      # fingerprint 1
+      out_1 <- ifelse(total_scores[[fp1]] > 0.5, 1, 0)
+      sub_scores_1 <- data.frame(out = out_1, subsystem_scores[[fp1]])
+      
+      t_test_1 <- data.frame(
+        sapply(
+          names(subset(sub_scores_1, out == 1)[, -1, drop = FALSE]),
+          function(col)
+            t.test(
+              subset(sub_scores_1, out == 1)[, -1][[col]],
+              subset(sub_scores_1, out == 0)[, -1][[col]]
+            )$p.value
+        )
+      )
+      colnames(t_test_1)[1] <- "pval"
+      fingerprint_features_1 <- rownames(subset(t_test_1, pval < 0.05))
+      
+      # fingerprint 2
+      out_2 <- ifelse(total_scores[[fp2]] > 0.5, 1, 0)
+      sub_scores_2 <- data.frame(out = out_2, subsystem_scores[[fp2]])
+      
+      t_test_2 <- data.frame(
+        sapply(
+          names(subset(sub_scores_2, out == 1)[, -1, drop = FALSE]),
+          function(col)
+            t.test(
+              subset(sub_scores_2, out == 1)[, -1][[col]],
+              subset(sub_scores_2, out == 0)[, -1][[col]]
+            )$p.value
+        )
+      )
+      colnames(t_test_2)[1] <- "pval"
+      fingerprint_features_2 <- rownames(subset(t_test_2, pval < 0.05))
+      
+      # subset correlation table by significant subsystems in each fingerprint
+      validate(need(length(fingerprint_features_1) > 0,
+                    "No subsystems pass the t-test filter for the first fingerprint."))
+      validate(need(length(fingerprint_features_2) > 0,
+                    "No subsystems pass the t-test filter for the second fingerprint."))
+      
+      row_keep <- intersect(rownames(cor_table_subsystem), fingerprint_features_1)
+      col_keep <- intersect(colnames(cor_table_subsystem), fingerprint_features_2)
+      
+      validate(need(length(row_keep) > 0 && length(col_keep) > 0,
+                    "No overlapping significant subsystems between the two fingerprints."))
+      
+      cor_table_subsystem <- cor_table_subsystem[row_keep, col_keep, drop = FALSE]
+    }
+    
+    # Apply correlation range filter from slider
+    thresh <- input$tier2_corr_thresh %||% 0
+    mode   <- input$tier2_corr_mode %||% "gte"
+    
+    row_min <- apply(cor_table_subsystem, 1, function(v) min(v, na.rm = TRUE))
+    row_max <- apply(cor_table_subsystem, 1, function(v) max(v, na.rm = TRUE))
+    col_min <- apply(cor_table_subsystem, 2, function(v) min(v, na.rm = TRUE))
+    col_max <- apply(cor_table_subsystem, 2, function(v) max(v, na.rm = TRUE))
+    
+    if (mode == "gte") {
+      row_keep <- row_max >= thresh
+      col_keep <- col_max >= thresh
+    } else { # "lte"
+      row_keep <- row_min <= thresh
+      col_keep <- col_min <= thresh
+    }
+
+
+cor_display <- cor_table_subsystem[row_keep, col_keep, drop = FALSE]
+validate(need(nrow(cor_display) > 0 && ncol(cor_display) > 0,
+              "No subsystems meet the correlation threshold criteria."))
+    
+    # Drop rows/cols that are completely NA
+    row_keep <- rowSums(!is.na(cor_display)) > 0
+    col_keep <- colSums(!is.na(cor_display)) > 0
+    cor_display <- cor_display[row_keep, col_keep, drop = FALSE]
+    validate(need(nrow(cor_display) > 0 && ncol(cor_display) > 0,
+                  "No subsystem pairs lie in the selected correlation range."))
+    
+    # Zoom‑dependent subsetting (uses ranges stored from relayout events)
+    mat_full <- cor_display
+    
+    relayout <- plotly::event_data("plotly_relayout", source = "tier2_subsystem")
+    
+    if (!is.null(relayout) &&
+        !is.null(relayout[["xaxis.range[0]"]]) &&
+        !is.null(relayout[["xaxis.range[1]"]]) &&
+        !is.null(relayout[["yaxis.range[0]"]]) &&
+        !is.null(relayout[["yaxis.range[1]"]])) {
+      
+      x0 <- relayout[["xaxis.range[0]"]]
+      x1 <- relayout[["xaxis.range[1]"]]
+      y0 <- relayout[["yaxis.range[0]"]]
+      y1 <- relayout[["yaxis.range[1]"]]
+      
+      # convert axis values to factor positions using the *current* labels
+      x_levels <- colnames(mat_full)
+      y_levels <- rownames(mat_full)
+      
+      # when you build plot_ly, x = x_levels, y = y_levels, so these are the same
+      x_idx <- which(x_levels >= x0 & x_levels <= x1)
+      y_idx <- which(y_levels >= y0 & y_levels <= y1)
+      
+      if (length(x_idx) > 0 && length(y_idx) > 0) {
+        mat_zoom <- mat_full[y_idx, x_idx, drop = FALSE]
+      } else {
+        mat_zoom <- mat_full
+      }
+    } else {
+      mat_zoom <- mat_full
+    }
+    
+    # Ordering within the zoomed window
+    order_mode <- input$tier2_order_mode %||% "hclust"
+    
+    mat_show <- mat_zoom
+    
+    x_vals <- colnames(mat_show)
+    y_vals <- rownames(mat_show)
+    
+    x_range <- NULL
+    y_range <- NULL
+    if (!is.null(relayout)) {
+      if (!is.null(relayout[["xaxis.range[0]"]]) && !is.null(relayout[["xaxis.range[1]"]])) {
+        x_range <- c(relayout[["xaxis.range[0]"]], relayout[["xaxis.range[1]"]])
+      }
+      if (!is.null(relayout[["yaxis.range[0]"]]) && !is.null(relayout[["yaxis.range[1]"]])) {
+        y_range <- c(relayout[["yaxis.range[0]"]], relayout[["yaxis.range[1]"]])
+      }
+    }
+    
+    if (order_mode == "name") {
+      mat_show <- mat_show[
+        order(rownames(mat_show)),
+        order(colnames(mat_show)),
+        drop = FALSE
+      ]
+    } else if (order_mode == "hclust") {
+      if (nrow(mat_show) > 1) {
+        row_ord <- hclust(dist(mat_show))$order
+        mat_show <- mat_show[row_ord, , drop = FALSE]
+      }
+      if (ncol(mat_show) > 1) {
+        col_ord <- hclust(dist(t(mat_show)))$order
+        mat_show <- mat_show[, col_ord, drop = FALSE]
+      }
+    } else if (order_mode == "diag") {
+      mat_show <- mat_zoom
+      abs_cor <- abs(mat_show)
+      
+      nr <- nrow(abs_cor)
+      nc <- ncol(abs_cor)
+      
+      # pad to square if needed
+      if (nr > nc) {
+        pad <- matrix(0, nrow = nr, ncol = nr - nc)
+        abs_sq <- cbind(abs_cor, pad)
+      } else if (nc > nr) {
+        pad <- matrix(0, nrow = nc - nr, ncol = nc)
+        abs_sq <- rbind(abs_cor, pad)
+      } else {
+        abs_sq <- abs_cor
+      }
+      
+      assign_sq <- clue::solve_LSAP(abs_sq, maximum = TRUE)
+      assign_idx <- as.integer(assign_sq)
+      
+      if (nr <= nc) {
+        col_ord <- assign_idx[seq_len(nr)]
+        row_ord <- seq_len(nr)
+      } else {
+        row_ord <- assign_idx[seq_len(nc)]
+        col_ord <- seq_len(nc)
+      }
+      
+      row_ord <- row_ord[row_ord <= nrow(mat_show)]
+      col_ord <- col_ord[col_ord <= ncol(mat_show)]
+      mat_show <- mat_show[row_ord, col_ord, drop = FALSE]
+      
+      # NEW: keep only diagonal where row and column names match
+      common_names <- intersect(rownames(mat_show), colnames(mat_show))
+      validate(need(length(common_names) > 0,
+                    "No common subsystems to display on the diagonal."))
+      
+      mat_show <- mat_show[common_names, common_names, drop = FALSE]
+    }
+    
+    ref_assay_name <- ref_id
+    
+    # Build Plotly heatmap with a source for relayout tracking
+    p_plotly <- plotly::plot_ly(
+      x      = colnames(mat_show),
+      y      = rownames(mat_show),
+      z      = mat_show,
+      type   = "heatmap",
+      colors = colorRamp(c("#B2182B", "white", "#2166AC")),
+      zmin   = -1,
+      zmax   =  1,
+      source = "tier2_subsystem"
+    ) |>
+      plotly::colorbar(title = "r") |>
+      plotly::layout(
+        title = paste0(
+          "Correlation of Effects Among Fingerprint Subsystem Features<br>",
+          fp1, " vs. ", fp2,
+          "<br>Reference Assay: ", ref_assay_name
+        ),
+        xaxis = list(
+          title = fp2,
+          range = if (!is.null(x_range)) x_range else NULL
+        ),
+        yaxis = list(
+          title = fp1,
+          range = if (!is.null(y_range)) y_range else NULL
+        ),
+        margin = list(l = 80, r = 20, b = 80, t = 80)
+      )
+    
+    p_plotly
   })
   
   output$tier1_corrplot_box <- plotly::renderPlotly({
@@ -1307,15 +1718,42 @@ server <- function(input, output, session) {
     df_all$row_id <- as.integer(as.factor(df_all$Fingerprint_Pair))
     df_all$Reference_Assay <- factor(df_all$Reference_Assay, levels = ref_ids)
     
-    # choose baseline for pairwise comparisons
+    # ---- single-reference: simple boxplot, no pairwise stats ----
+    if (length(ref_ids) < 2L) {
+      p <- ggplot(df_all, aes(x = Reference_Assay, y = Pearson_Correlation)) +
+        geom_boxplot(
+          outlier.shape = NA,
+          alpha         = 0.4,
+          width         = 0.4,
+          color         = "black",
+          fill          = "#3182BD"
+        ) +
+        geom_jitter(
+          width  = 0.1,
+          size   = 1.6,
+          alpha  = 0.6,
+          color  = "#636363"
+        ) +
+        ggtitle("Correlation of fingerprint models within reference assay") +
+        labs(x = NULL, y = "Pearson correlation") +
+        theme_minimal(base_size = 12) +
+        theme(
+          plot.title       = element_text(face = "bold", hjust = 0.5),
+          axis.text.x      = element_text(angle = 45, hjust = 1),
+          panel.grid.minor = element_blank()
+        )
+      
+      return(plotly::ggplotly(p, tooltip = c("x", "y")))
+    }
+    
+    # ---- multi-reference: existing pairwise comparison logic ----
     base_ref <- ref_ids[1]
     
-    # all pairwise tests: baseline vs each other reference
     pair_stats <- lapply(ref_ids[-1], function(ref2) {
       sub <- df_all[df_all$Reference_Assay %in% c(base_ref, ref2), ]
       pval <- tryCatch(
         stats::t.test(
-          pearson_Correlation ~ Reference_Assay,
+          Pearson_Correlation ~ Reference_Assay,
           data = sub
         )$p.value,
         error = function(e) NA_real_
@@ -1330,26 +1768,24 @@ server <- function(input, output, session) {
     pair_stats <- do.call(rbind, pair_stats)
     
     pair_stats$p_signif <- dplyr::case_when(
-      is.na(pair_stats$pval)      ~ "",
-      pair_stats$pval < 0.001     ~ "***",
-      pair_stats$pval < 0.01      ~ "**",
-      pair_stats$pval < 0.05      ~ "*",
-      TRUE                        ~ "ns"
+      is.na(pair_stats$pval)  ~ "",
+      pair_stats$pval < 0.001 ~ "***",
+      pair_stats$pval < 0.01  ~ "**",
+      pair_stats$pval < 0.05  ~ "*",
+      TRUE                    ~ "ns"
     )
     
-    # y positions per pair: stack brackets above the max
-    y_base <- max(df_all$pearson_Correlation, na.rm = TRUE)
-    y_step <- 0.05 * diff(range(df_all$pearson_Correlation, na.rm = TRUE))
+    y_base <- max(df_all$Pearson_Correlation, na.rm = TRUE)
+    y_step <- 0.05 * diff(range(df_all$Pearson_Correlation, na.rm = TRUE))
     if (!is.finite(y_step) || y_step == 0) y_step <- 0.05
     
     pair_stats$y <- y_base + seq_len(nrow(pair_stats)) * y_step
     
-    # numeric x positions
     pair_stats$x1   <- as.numeric(factor(pair_stats$group1, levels = ref_ids))
     pair_stats$x2   <- as.numeric(factor(pair_stats$group2, levels = ref_ids))
     pair_stats$xmid <- (pair_stats$x1 + pair_stats$x2) / 2
     
-    p <- ggplot(df_all, aes(x = Reference_Assay, y = pearson_Correlation)) +
+    p <- ggplot(df_all, aes(x = Reference_Assay, y = Pearson_Correlation)) +
       geom_boxplot(
         outlier.shape = NA,
         alpha         = 0.4,
@@ -1366,11 +1802,10 @@ server <- function(input, output, session) {
       ) +
       geom_line(
         aes(group = row_id),
-        color = "#9E9E9E",
-        alpha = 0.4,
+        color     = "#9E9E9E",
+        alpha     = 0.4,
         linewidth = 0.25
       ) +
-      # brackets between boxes
       geom_segment(
         data = pair_stats,
         aes(
@@ -1383,7 +1818,6 @@ server <- function(input, output, session) {
         linewidth   = 0.4,
         color       = "#444444"
       ) +
-      # short vertical ticks down to boxes
       geom_segment(
         data = pair_stats,
         aes(
@@ -1408,12 +1842,11 @@ server <- function(input, output, session) {
         linewidth   = 0.4,
         color       = "#444444"
       ) +
-      # stars centered between boxes
       geom_text(
         data = pair_stats,
         aes(
-          x = xmid,
-          y = y + 0.01,
+          x     = xmid,
+          y     = y + 0.01,
           label = p_signif
         ),
         inherit.aes = FALSE,
@@ -1421,25 +1854,92 @@ server <- function(input, output, session) {
         vjust       = 0
       ) +
       ggtitle("Changes in Correlations of Fingerprint Models Across Reference Assays") +
-      labs(x = NULL, y = "pearson correlation") +
+      labs(x = NULL, y = "Pearson correlation") +
       theme_minimal(base_size = 12) +
       theme(
-        plot.title   = element_text(face = "bold", hjust = 0.5),
-        axis.text.x  = element_text(angle = 45, hjust = 1),
+        plot.title       = element_text(face = "bold", hjust = 0.5),
+        axis.text.x      = element_text(angle = 45, hjust = 1),
         panel.grid.minor = element_blank()
       )
     
-    session$sendCustomMessage("coralie-loading-progress", 100)
-    session$sendCustomMessage("coralie-loading-subtext", "")
-    session$sendCustomMessage("coralie-toggle-loading", FALSE)
+    plotly::ggplotly(p, tooltip = c("x", "y"))
+  })
+  
+  observeEvent(plotly::event_data("plotly_click", source = "tier1_corr_grid"), {
+    d <- plotly::event_data("plotly_click", source = "tier1_corr_grid")
+    if (is.null(d) || nrow(d) == 0) return()
     
-    plotly::ggplotly(p)
+    dat <- tier1_cor_data()
+    req(dat)
+    cor_long <- dat$cor_long
+    
+    # ensure factors with known level order (same as in the plot)
+    cor_long$Fingerprint1     <- factor(cor_long$Fingerprint1)
+    cor_long$Fingerprint2     <- factor(cor_long$Fingerprint2)
+    cor_long$Reference_Assay  <- factor(cor_long$Reference_Assay)
+    
+    # x/y are numeric positions along the factor axes
+    x_idx <- round(d$x[1])
+    y_idx <- round(d$y[1])
+    
+    fp1_levels <- levels(cor_long$Fingerprint1)
+    fp2_levels <- levels(cor_long$Fingerprint2)
+    
+    # safety check
+    if (x_idx < 1 || x_idx > length(fp1_levels)) return()
+    if (y_idx < 1 || y_idx > length(fp2_levels)) return()
+    
+    fp1 <- fp1_levels[x_idx]
+    fp2 <- fp2_levels[y_idx]
+    
+    # reference assay: get facet index from subplot name
+    ref <- NULL
+    if ("subplot" %in% names(d)) {
+      # subplot is usually like "subplot-x-y"; convert y to facet index
+      sub <- as.character(d$subplot[1])
+      # last number after "-" is facet row index
+      idx <- as.integer(gsub(".*-", "", sub))
+      ref_levels <- levels(cor_long$Reference_Assay)
+      if (!is.na(idx) && idx >= 1 && idx <= length(ref_levels)) {
+        ref <- ref_levels[idx]
+      }
+    }
+    
+    # Fallback: if only one reference assay, use it
+    if (is.null(ref) && length(levels(cor_long$Reference_Assay)) == 1L) {
+      ref <- levels(cor_long$Reference_Assay)[1]
+    }
+    
+    # Debug once
+    # print(list(raw = d, fp1 = fp1, fp2 = fp2, ref = ref))
+    
+    if (is.null(ref) || is.null(fp1) || is.null(fp2) || fp1 == fp2) return()
+    
+    tier2_selection(list(
+      ref_id = ref,
+      fp1    = fp1,
+      fp2    = fp2
+    ))
+  })
+  
+  
+  observeEvent(plotly::event_data("plotly_relayout", source = "tier2_subsystem"), {
+    ev <- plotly::event_data("plotly_relayout", source = "tier2_subsystem")
+    if (is.null(ev)) return()
+    
+    # For heatmaps, ranges often appear as xaxis.range[0], xaxis.range[1], etc.
+    xr <- ev[grep("^xaxis\\.range\\[", names(ev))]
+    yr <- ev[grep("^yaxis\\.range\\[", names(ev))]
+    
+    if (length(xr) == 2) tier2_x_range(sort(unlist(xr)))
+    if (length(yr) == 2) tier2_y_range(sort(unlist(yr)))
   })
   
   output$tier1_subsystem_bar <- plotly::renderPlotly({
     req(analysis_done_1())
     dat <- tier1_cor_data()
     req(dat)
+    
     ref_ids  <- dat$ref_ids
     diag_all <- dat$diag_all
     
@@ -1454,27 +1954,47 @@ server <- function(input, output, session) {
       diag_single$Subsystem <- factor(diag_single$Subsystem, diag_single$Subsystem)
       
       p <- ggplot(diag_single, aes(x = Subsystem, y = Average)) +
-        geom_col(fill = "steelblue") +
-        theme_minimal(base_size = 11) +
+        geom_col(
+          fill = "#5C6BC0",
+          width = 0.7
+        ) +
+        geom_hline(yintercept = 0, color = "grey85") +
+        theme_minimal(base_size = 12) +
         theme(
-          axis.text.x = element_text(angle = 70, hjust = 1),
-          plot.title  = element_text(hjust = 0.5, face = "bold")
+          axis.text.x  = element_text(angle = 60, hjust = 1, vjust = 1, size = 10),
+          axis.text.y  = element_text(size = 10, face = "bold"),
+          axis.title.y = element_text(size = 11),
+          panel.grid.major.y = element_line(color = "grey90", linewidth = 0.3),
+          panel.grid.minor = element_blank(),
+          plot.title  = element_text(hjust = 0.5, face = "bold"),
+          plot.margin = margin(t = 10, r = 10, b = 40, l = 80)
         ) +
         labs(
           x = NULL,
           y = "Average correlation",
           title = paste(
-            "Average maximum subsystem correlations across reference assay:",
+            "Average subsystem correlations for reference assay:",
             ref_ids[1]
           )
         )
       
-      return(plotly::ggplotly(p))
+      return(
+        plotly::ggplotly(p, tooltip = c("x", "y")) |>
+          plotly::layout(
+            height = 550,
+            margin = list(l = 80, r = 20, t = 60, b = 80)
+          )
+      )
     }
     
     # ---- multi-reference branch ----
-    mode <- input$subsystem_bar_mode
-    df   <- switch(
+    mode      <- input$subsystem_bar_mode
+    sort_mode <- input$subsystem_bar_sort
+    if (is.null(sort_mode) || length(sort_mode) != 1L) {
+      sort_mode <- "ref1"
+    }
+    
+    df <- switch(
       mode,
       high    = dat$result_high_response,
       low     = dat$result_low_response,
@@ -1494,21 +2014,36 @@ server <- function(input, output, session) {
     names(df) <- sub("^Std_Dev1$", "Std_Dev_1", names(df))
     names(df) <- sub("^Std_Dev2$", "Std_Dev_2", names(df))
     
-    high_lab <- dat$ref_ids[1]
-    low_lab  <- dat$ref_ids[2]
+    high_lab <- ref_ids[1]
+    low_lab  <- ref_ids[2]
     
-    # order subsystems by the “higher” group
+    # choose ordering metric based on user selection
+    
     df <- df %>%
       dplyr::mutate(
-        order_value = dplyr::case_when(
-          mode == "high"    ~ Average_1,
-          mode == "low"     ~ Average_2,
-          mode == "similar" ~ (Average_1 + Average_2) / 2,
-          TRUE              ~ Average_1
+        diff_value = Average_1 - Average_2,
+        sig_score  = dplyr::case_when(
+          is.na(p_value) ~ 0,
+          TRUE           ~ -log10(p_value + 1e-16)
         )
-      ) %>%
+      )
+    
+    if (sort_mode == "ref1") {
+      df$order_value <- df$Average_1
+    } else if (sort_mode == "ref2") {
+      df$order_value <- df$Average_2
+    } else if (sort_mode == "diff") {
+      df$order_value <- abs(df$diff_value)
+    } else if (sort_mode == "pval") {
+      df$order_value <- df$sig_score
+    } else {
+      df$order_value <- df$Average_1
+    }
+    
+    df <- df %>%
       dplyr::arrange(dplyr::desc(order_value))
     
+    # highest at top
     df$Subsystem <- factor(df$Subsystem, levels = rev(unique(df$Subsystem)))
     
     metabolic_data <- df
@@ -1525,7 +2060,6 @@ server <- function(input, output, session) {
           Std_Dev_1,
           Std_Dev_2
         ),
-        # pretty labels in legend
         response_type = dplyr::recode(
           response_type,
           "Average_1" = high_lab,
@@ -1533,6 +2067,20 @@ server <- function(input, output, session) {
         )
       )
     
+    # significance stars per subsystem (from df$p_value already computed upstream)
+    sig_df <- metabolic_data %>%
+      dplyr::mutate(
+        p_signif = dplyr::case_when(
+          is.na(p_value)  ~ "",
+          p_value < 0.001 ~ "***",
+          p_value < 0.01  ~ "**",
+          p_value < 0.05  ~ "*",
+          TRUE            ~ "ns"
+        ),
+        x_star = 1.05     # slightly beyond the max x (since your scale is roughly -1..1)
+      )
+    
+    # standard bar aesthetic
     p <- ggplot(
       plot_data,
       aes(
@@ -1541,12 +2089,58 @@ server <- function(input, output, session) {
         fill = response_type
       )
     ) +
-      geom_col(position = position_dodge(width = 0.9), width = 0.8) +
+      geom_col(
+        position = position_dodge(width = 0.7),
+        width    = 0.6,
+        color    = NA
+      ) +
+      geom_errorbar(
+        aes(
+          xmin = average_response - std_dev,
+          xmax = average_response + std_dev
+        ),
+        position = position_dodge(width = 0.7),
+        width    = 0.1,
+        color    = "grey40",
+        linewidth = 0.01
+      ) +
+      geom_vline(xintercept = 0, color = "grey90") +
       scale_fill_manual(
-        values = setNames(c("#00BFC4", "#F8766D"), c(high_lab, low_lab)),
+        values = setNames(
+          c("#42A5F5", "#EF5350"),
+          c(high_lab, low_lab)
+        ),
         breaks = c(high_lab, low_lab),
         labels = c(high_lab, low_lab),
         name   = "Reference assay"
+      ) +
+      scale_x_continuous(expand = expansion(mult = c(0.01, 0.15))) +
+      # significance stars, centered between the two bars
+      geom_text(
+        data = sig_df,
+        aes(
+          x     = x_star,
+          y     = Subsystem,
+          label = p_signif
+        ),
+        inherit.aes = FALSE,
+        hjust       = 0,     # left-align text at x_star
+        vjust       = 0.5,
+        size        = 3.3
+      ) +
+      theme_minimal(base_size = 12) +
+      theme(
+        axis.text.y = element_text(hjust = 1, face = "bold", size = 10),
+        axis.text.x = element_text(size = 10),
+        axis.title.x = element_text(size = 11),
+        panel.grid.major.y = element_line(color = "grey90", linewidth = 0.3),
+        panel.grid.major.x = element_line(color = "grey95", linewidth = 0.3),
+        panel.grid.minor = element_blank(),
+        legend.position = "top",
+        legend.title = element_text(size = 11),
+        legend.text  = element_text(size = 10),
+        plot.title   = element_text(hjust = 0.5, face = "bold"),
+        plot.margin  = margin(t = 10, r = 20, b = 40, l = 120)
       ) +
       labs(
         title = dplyr::case_when(
@@ -1555,16 +2149,18 @@ server <- function(input, output, session) {
           mode == "similar" ~ paste("Subsystems similarly high in", high_lab, "and", low_lab),
           TRUE              ~ "Subsystem correlations"
         ),
-        x = "Average pearson correlation",
+        x = "Average Pearson correlation",
         y = "Subsystem"
-      ) +
-      theme_minimal(base_size = 11) +
-      theme(
-        axis.text.y = element_text(hjust = 1, face = "bold", size = 11),
-        plot.title  = element_text(hjust = 0.5, face = "bold")
       )
     
-    plotly::ggplotly(p, tooltip = "text")
+    plotly::ggplotly(
+      p,
+      tooltip = c("y", "x", "fill")
+    ) |>
+      plotly::layout(
+        height = 650,
+        margin = list(l = 120, r = 20, t = 70, b = 40)
+      )
   })
 }
 
