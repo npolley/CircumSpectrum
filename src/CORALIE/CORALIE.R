@@ -18,17 +18,9 @@ sidebar <- dashboardSidebar(
   sidebarMenu(
     id = "main_tier",                     
     
-    menuItem("Tier I", 
-             tabName = "tier1", 
-             icon = icon("layer-group")),
-    
-    menuItem("Tier II", 
-             tabName = "tier2", 
-             icon = icon("layer-group")),
-    
-    menuItem("Tier III", 
-             tabName = "tier3", 
-             icon = icon("layer-group"))
+    menuItem("Analysis Interface", 
+             tabName = "tier1") 
+             
   )
 )
 
@@ -556,17 +548,9 @@ div(
       ),
       fluidRow(
         div(id = "tier1_corplot_grid_placeholder")
-      )
-    ),
-    tabItem(
-      tabName = "tier2",
-      h2("Tier II"),
-      p("Content for Tier II.")
-    ),
-    tabItem(
-      tabName = "tier3",
-      h2("Tier III"),
-      p("Content for Tier III.")
+      ),
+      fluidRow(
+        div(id = "tier3_analysis_placeholder"))
     )
   )
 )
@@ -600,6 +584,9 @@ server <- function(input, output, session) {
   
   tier2_selection <- reactiveVal(NULL)
   tier2_panel_inserted <- reactiveVal(FALSE)
+  
+  clicked_subsystem <- reactiveVal(NULL)
+  tier3_box_inserted <- reactiveVal(FALSE)
   
   tier2_x_range <- reactiveVal(NULL)
   tier2_y_range <- reactiveVal(NULL)
@@ -638,6 +625,10 @@ server <- function(input, output, session) {
       shinyjs::enable("load_fingerprints")
     }
   })
+  
+  human_react_meta<-read.csv("../../data/fingerprint_prep_objects/human_reaction_meta.csv", header = T, row.names = 1)
+  mouse_react_meta<-read.csv("../../data/fingerprint_prep_objects/mouse_reaction_meta.csv", header = T, row.names = 1)
+  react_meta_filt<-human_react_meta[intersect(rownames(human_react_meta), rownames(mouse_react_meta)),]
   
   # --- 3. Load fingerprints and, on first success, insert reference box ---
   observeEvent(input$load_fingerprints, {
@@ -1868,7 +1859,7 @@ validate(need(nrow(cor_display) > 0 && ncol(cor_display) > 0,
   observeEvent(plotly::event_data("plotly_click", source = "tier1_corr_grid"), {
     d <- plotly::event_data("plotly_click", source = "tier1_corr_grid")
     if (is.null(d) || nrow(d) == 0) return()
-    
+    print(d)
     dat <- tier1_cor_data()
     req(dat)
     cor_long <- dat$cor_long
@@ -1881,9 +1872,11 @@ validate(need(nrow(cor_display) > 0 && ncol(cor_display) > 0,
     # x/y are numeric positions along the factor axes
     x_idx <- round(d$x[1])
     y_idx <- round(d$y[1])
-    
+    ref_idx <- round(d$curveNumber[1])+1
+
     fp1_levels <- levels(cor_long$Fingerprint1)
     fp2_levels <- levels(cor_long$Fingerprint2)
+    ref_levels <- levels(cor_long$Reference_Assay)
     
     # safety check
     if (x_idx < 1 || x_idx > length(fp1_levels)) return()
@@ -1891,25 +1884,13 @@ validate(need(nrow(cor_display) > 0 && ncol(cor_display) > 0,
     
     fp1 <- fp1_levels[x_idx]
     fp2 <- fp2_levels[y_idx]
-    
-    # reference assay: get facet index from subplot name
-    ref <- NULL
-    if ("subplot" %in% names(d)) {
-      # subplot is usually like "subplot-x-y"; convert y to facet index
-      sub <- as.character(d$subplot[1])
-      # last number after "-" is facet row index
-      idx <- as.integer(gsub(".*-", "", sub))
-      ref_levels <- levels(cor_long$Reference_Assay)
-      if (!is.na(idx) && idx >= 1 && idx <= length(ref_levels)) {
-        ref <- ref_levels[idx]
-      }
-    }
+    ref <- ref_levels[ref_idx]
     
     # Fallback: if only one reference assay, use it
     if (is.null(ref) && length(levels(cor_long$Reference_Assay)) == 1L) {
       ref <- levels(cor_long$Reference_Assay)[1]
     }
-    
+    print(ref)
     # Debug once
     # print(list(raw = d, fp1 = fp1, fp2 = fp2, ref = ref))
     
@@ -1953,7 +1934,7 @@ validate(need(nrow(cor_display) > 0 && ncol(cor_display) > 0,
       diag_single <- diag_single[order(-diag_single$Average), ]
       diag_single$Subsystem <- factor(diag_single$Subsystem, diag_single$Subsystem)
       
-      p <- ggplot(diag_single, aes(x = Subsystem, y = Average)) +
+      p <- ggplot(diag_single, aes(x = Subsystem, y = Average, key = Subsystem)) +
         geom_col(
           fill = "#5C6BC0",
           width = 0.7
@@ -1979,7 +1960,7 @@ validate(need(nrow(cor_display) > 0 && ncol(cor_display) > 0,
         )
       
       return(
-        plotly::ggplotly(p, tooltip = c("x", "y")) |>
+        plotly::ggplotly(p, tooltip = c("y", "x","key"), source  = "tier1_subsystem_bar" ) |>
           plotly::layout(
             height = 550,
             margin = list(l = 80, r = 20, t = 60, b = 80)
@@ -1993,7 +1974,7 @@ validate(need(nrow(cor_display) > 0 && ncol(cor_display) > 0,
     if (is.null(sort_mode) || length(sort_mode) != 1L) {
       sort_mode <- "ref1"
     }
-    
+
     df <- switch(
       mode,
       high    = dat$result_high_response,
@@ -2086,7 +2067,8 @@ validate(need(nrow(cor_display) > 0 && ncol(cor_display) > 0,
       aes(
         y    = Subsystem,
         x    = average_response,
-        fill = response_type
+        fill = response_type,
+        key = Subsystem 
       )
     ) +
       geom_col(
@@ -2155,13 +2137,441 @@ validate(need(nrow(cor_display) > 0 && ncol(cor_display) > 0,
     
     plotly::ggplotly(
       p,
-      tooltip = c("y", "x", "fill")
+      tooltip = c("y", "x", "fill","key"),
+      source = "tier1_subsystem_bar"
     ) |>
       plotly::layout(
         height = 650,
         margin = list(l = 120, r = 20, t = 70, b = 40)
       )
   })
+  
+  observeEvent(
+    plotly::event_data("plotly_click", source = "tier1_subsystem_bar"),
+    {
+      ev <- plotly::event_data("plotly_click", source = "tier1_subsystem_bar")
+      if (is.null(ev) || is.null(ev$key)) return()
+      clicked_subsystem(as.character(ev$key))
+    }
+  )
+  
+  observeEvent(clicked_subsystem(), {
+    req(clicked_subsystem())
+    if (!tier3_box_inserted()) {
+      insertUI(
+        selector = "#tier3_analysis_placeholder",
+        where    = "afterEnd",
+        ui = fluidRow(
+          class = "fade-in-up",
+          column(
+            width = 12,
+            box(
+              width = 12,
+              status = "primary",
+              solidHeader = TRUE,
+              title = "CORALIE - Tier III Analysis of Reaction Activities Across Fingerprints and Reference Assays",
+              plotly::plotlyOutput("tier3_reaction_plot", height = 600)
+            )
+          )
+        )
+      )
+      tier3_box_inserted(TRUE)
+    }
+  })
+  
+  output$tier3_reaction_plot <- plotly::renderPlotly({
+    req(analysis_done_1())
+    req(clicked_subsystem())
+    
+    # session$sendCustomMessage("coralie-loading-text", "Running CORALIE - Tier III Analysis")
+    # session$sendCustomMessage("coralie-toggle-loading", TRUE)
+    
+    dat <- tier1_cor_data()
+    req(dat)
+    
+    ref_ids          <- dat$ref_ids
+    ex_subsystems_all <- dat$ex_subsystems_all
+    fps              <- fingerprints_list_1()
+    req(fps)
+
+    n_refs <- length(ref_ids)
+    validate(
+      need(n_refs >= 1, "Tier III: at least one reference assay is required.")
+    )
+    
+    subsystem_name   <- clicked_subsystem()
+    ref_assay_name_1 <- ref_ids[1]
+    ref_assay_name_2 <- if (n_refs >= 2) ref_ids[2] else NULL
+    
+    # ------------------------------------------------------------------
+    # 1) Collect reaction features used by models for this subsystem
+    # ------------------------------------------------------------------
+    react_list <- character(0)
+    
+    for (i in seq_along(fps)) {
+      fingerprint <- fps[[i]]
+      auc_list    <- fingerprint$All$auc_primary
+      auc_list$subsystem <- make.names(auc_list$subsystem)
+      
+      if (subsystem_name %in% auc_list$subsystem) {
+        model_num <- as.numeric(
+          unlist(subset(auc_list, subsystem == subsystem_name)$index)
+        )
+        model     <- fingerprint$All$fingerprints_primary[[model_num]]
+        features  <- model$coefnames
+        react_list <- c(react_list, features)
+      }
+    }
+    
+    react_list <- unique(react_list)
+    validate(
+      need(length(react_list) > 0, "Tier III: no reaction features found for this subsystem.")
+    )
+    
+    # ------------------------------------------------------------------
+    # 2) Helper to build reaction prediction matrix for one reference
+    # ------------------------------------------------------------------
+    
+    react_meta_filt$subsystem <- make.names(react_meta_filt$subsystem)
+    
+    build_react_matrix <- function(ref_id) {
+      assay    <- reference_list_1()[[ref_id]]      # same data frame used in Tier I
+      fp_names <- names(fps)
+
+      react_pred_mat <- NULL
+      sample_ids     <- assay[,1]
+      
+      for (fp_name in fp_names) {
+        fingerprint <- fps[[fp_name]]
+        auc_list    <- fingerprint$All$auc_primary
+        auc_list$subsystem <- make.names(auc_list$subsystem)
+        
+        if (subsystem_name %in% auc_list$subsystem) {
+          model_num <- as.numeric(
+            unlist(subset(auc_list, subsystem == subsystem_name)$index)
+          )
+          model     <- fingerprint$All$fingerprints_primary[[model_num]]
+          feats     <- intersect(model$coefnames, colnames(assay))
+          if (length(feats) == 0) next
+          
+          new_dat <- as.matrix(assay[, feats, drop = FALSE])
+          colnames(new_dat) <- feats
+          
+          pred <- predict(
+            model,
+            newdata   = new_dat,
+            type      = "prob",
+            na.action = na.pass
+          )[ , 1]
+          
+          names(pred) <- sample_ids
+          
+          if (is.null(react_pred_mat)) {
+            react_pred_mat <- cbind(pred)
+            colnames(react_pred_mat) <- fp_name
+          } else {
+            react_pred_mat <- cbind(react_pred_mat, pred)
+            colnames(react_pred_mat)[ncol(react_pred_mat)] <- fp_name
+          }
+        }
+      }
+      
+      react_pred_mat
+    }
+    
+    get_subsystem_react_matrix <- function(ref_id, subsystem_name) {
+      ref_mat <- reference_list_1()[[ref_id]]  # samples × reactions
+      validate(
+        need(!is.null(ref_mat),
+             paste("Tier III: no reaction matrix found for reference assay", ref_id))
+      )
+      
+      sample_ids     <- ref_mat[,1]
+      
+      # Reactions in this subsystem (after make.names)
+      subs_in_meta <- rownames(react_meta_filt)[
+        react_meta_filt$subsystem == subsystem_name
+      ]
+      subs_in_meta <- intersect(subs_in_meta, colnames(ref_mat))
+      
+      validate(
+        need(length(subs_in_meta) > 0,
+             paste("Tier III: no reactions in react_meta_filt for subsystem", subsystem_name))
+      )
+      
+      ref_sub <-ref_mat[, subs_in_meta, drop = FALSE]   # samples × reactions (raw values)
+      
+      keep_cols <- apply(ref_sub, 2, function(x) all(is.finite(x)))
+      ref_sub   <- ref_sub[, keep_cols, drop = FALSE]
+      
+      validate(
+        need(ncol(ref_sub) > 0,
+             paste("Tier III: all reactions for subsystem", subsystem_name,
+                   "contain missing or non-finite values."))
+      )
+      
+      rownames(ref_sub) <- sample_ids
+      ref_sub
+    }
+    
+    # ------------------------------------------------------------------
+    # 3) Correlations for reference assay 1 (always present)
+    # ------------------------------------------------------------------
+    react_pred_ref_1 <- build_react_matrix(ref_assay_name_1)
+    validate(
+      need(!is.null(react_pred_ref_1),
+           "Tier III: no reaction predictions available for this subsystem in the first reference assay.")
+    )
+    
+    subs_vec_ref_1 <- get_subsystem_react_matrix(ref_assay_name_1, subsystem_name)
+    
+    
+    common_rows<-intersect(rownames(react_pred_ref_1),rownames(subs_vec_ref_1))
+    
+    react_pred_ref_1<-react_pred_ref_1[common_rows,]
+    subs_vec_ref_1<-subs_vec_ref_1[common_rows,]
+    
+    corr_ref_1 <- cor(react_pred_ref_1, subs_vec_ref_1, use = "pairwise.complete.obs")
+    react_cors_df_1 <- as.data.frame(corr_ref_1)
+    
+    keep_cols <- apply(react_cors_df_1, 2, function(x) all(is.finite(x)))
+    react_cors_df_1   <- react_cors_df_1[, keep_cols, drop = FALSE]
+    
+    colnames(react_cors_df_1)<-react_meta_filt[colnames(react_cors_df_1),"RECON3D"]
+    
+    validate(
+      need(nrow(react_cors_df_1) > 0,
+           "Tier III: no valid correlations for the first reference assay.")
+    )
+
+    # ------------------------------------------------------------------
+    # 4) If a second reference assay exists, compute its correlations
+    # ------------------------------------------------------------------
+    has_second_ref <- n_refs >= 2 && !is.null(ref_assay_name_2)
+    
+    if (has_second_ref) {
+      react_pred_ref_2 <- build_react_matrix(ref_assay_name_2)
+      validate(
+        need(!is.null(react_pred_ref_2),
+             "Tier III: no reaction predictions available for this subsystem in the second reference assay.")
+      )
+      
+      sub_scores_ref_2 <- ex_subsystems_all[[ref_assay_name_2]]
+      fp_names_sub_2   <- names(sub_scores_ref_2)
+      validate(
+        need(length(fp_names_sub_2) > 0,
+             "Tier III: no subsystem scores found for the second reference assay.")
+      )
+      
+      fp_target_2 <- fp_names_sub_2[1]
+      subs_vec_ref_2 <- get_subsystem_react_matrix(ref_assay_name_2, subsystem_name)
+
+      
+      common_rows<-intersect(rownames(react_pred_ref_2),rownames(subs_vec_ref_2))
+      
+      react_pred_ref_2<-react_pred_ref_2[common_rows,]
+      subs_vec_ref_2<-subs_vec_ref_2[common_rows,]
+      
+      corr_ref_2 <- cor(react_pred_ref_2, subs_vec_ref_2, use = "pairwise.complete.obs")
+      react_cors_df_2 <- as.data.frame(corr_ref_2)
+      
+      keep_cols <- apply(react_cors_df_2, 2, function(x) all(is.finite(x)))
+      react_cors_df_2   <- react_cors_df_2[, keep_cols, drop = FALSE]
+      
+      colnames(react_cors_df_2)<-react_meta_filt[colnames(react_cors_df_2),"RECON3D"]
+      
+      # Align reactions between ref 1 and ref 2
+       common_cols <- intersect(colnames(react_cors_df_1), colnames(react_cors_df_2))
+
+       react_cors_df_1 <- react_cors_df_1[, common_cols, drop = FALSE]
+       react_cors_df_2 <- react_cors_df_2[, common_cols, drop = FALSE]
+       
+      
+      validate(
+        need(nrow(react_cors_df_1) > 0,
+             "Tier III: no common reactions between the two reference assays.")
+      )
+    }
+    # ------------------------------------------------------------------
+    # 5) Build heatmaply plot(s)
+    # ------------------------------------------------------------------
+    
+    # Decide whether to cluster rows
+    do_cluster_cols <- TRUE
+    if (ncol(react_cors_df_1) <= 2) {
+      do_cluster_cols <- FALSE
+    } else {
+      # extra safety: check that dist() has no non-finite values
+      d_test <- try(stats::dist(t(as.matrix(react_cors_df_1))), silent = TRUE)
+      if (inherits(d_test, "try-error") || any(!is.finite(d_test))) {
+        do_cluster_cols <- FALSE
+      }
+    }
+    
+    # always fine to cluster rows for this matrix; guard similarly if needed
+    do_cluster_rows <- TRUE
+    
+    # Use ref 1 to derive row/column ordering
+    hm_tmp <- heatmaply::heatmaply(
+      react_cors_df_1,
+      scale_fill_gradient_fun = ggplot2::scale_fill_gradient2(
+        low      = "red",
+        high     = "blue",
+        midpoint = 0,
+        limits   = range(react_cors_df_1, na.rm = TRUE)
+      ),
+      main        = "Correlation ordering helper",
+      Rowv        = do_cluster_rows,
+      Colv        = do_cluster_cols,
+      plot_method = "plotly"
+    )
+    
+    
+    rows    <- rev(hm_tmp$x$layout$yaxis2$ticktext)
+    columns <- hm_tmp$x$layout$xaxis$ticktext
+
+    if(is.null(rows)){
+      p1 <- hm_tmp
+      
+      p1 <- plotly::layout(
+        p1,
+        yaxis = list(tickfont = list(size = 10, color = "black"))
+      )
+      
+      p1$x$data[[1]]$colorscale <- list(
+        list(0,  "red"),   # z = -1
+        list(0.5, "white"),# z = 0
+        list(1,  "blue")   # z = 1
+      )
+      p1$x$data[[1]]$zmin <- -1
+      p1$x$data[[1]]$zmax <- 1
+    }else{
+      p1 <- heatmaply::heatmaply(
+        react_cors_df_1[rows, columns, drop = FALSE],
+        scale_fill_gradient_fun = ggplot2::scale_fill_gradient2(
+          low      = "red",
+          high     = "blue",
+          midpoint = 0,
+          limits   = c(-1, 1)
+        ),
+        main = paste0(
+          "<span style='font-size:12px;'>Correlation of Subsystem Reaction Activity and Fingerprint Prediction - ",
+          subsystem_name, "<br>"
+        ),
+        Rowv        = FALSE,
+        Colv        = FALSE,
+        margins     = c(50, 50, 130, 50),
+        plot_method = "plotly"
+      )
+      
+      p1 <- plotly::layout(
+        p1,
+        yaxis = list(tickfont = list(size = 10, color = "black"))
+      )
+      
+      p1$x$data[[1]]$colorscale <- list(
+        list(0,  "red"),   # z = -1
+        list(0.5, "white"),# z = 0
+        list(1,  "blue")   # z = 1
+      )
+      p1$x$data[[1]]$zmin <- -1
+      p1$x$data[[1]]$zmax <- 1
+    }
+    
+    
+    # If only one reference assay, return a single panel
+    if (!has_second_ref) {
+      p1 <- p1 |>
+        plotly::layout(
+          annotations = list(
+            list(
+              text   = ref_assay_name_1,
+              x      = 0.5,
+              y      = 1.02,
+              xref   = "paper",
+              yref   = "paper",
+              xanchor = "center",
+              yanchor = "bottom",
+              showarrow = FALSE,
+              font = list(size = 12, color = "black")
+            )
+          )
+        )
+      #session$sendCustomMessage("coralie-toggle-loading", FALSE)
+      return(p1)
+    }
+
+    # Second panel
+    p2 <- heatmaply::heatmaply(
+      react_cors_df_2[rows, columns, drop = FALSE],
+      scale_fill_gradient_fun = ggplot2::scale_fill_gradient2(
+        low      = "red",
+        high     = "blue",
+        midpoint = 0,
+        limits   = c(-1, 1)
+      ),
+      main = paste0(
+        "<span style='font-size:12px;'>Correlation of Subsystem Reaction Activity and Fingerprint Prediction - ",
+        subsystem_name, "<br>"
+      ),
+      Rowv        = FALSE,
+      Colv        = FALSE,
+      margins     = c(50, 50, 130, 50),
+      plot_method = "plotly"
+    )
+    
+    p2 <- plotly::layout(
+      p2,
+      yaxis = list(tickfont = list(size = 10, color = "black"))
+    )
+    
+    p2$x$data[[1]]$colorscale <- list(
+      list(0,  "red"),
+      list(0.5, "white"),
+      list(1,  "blue")
+    )
+    p2$x$data[[1]]$zmin <- -1
+    p2$x$data[[1]]$zmax <- 1
+    
+    # Two panels stacked
+    fig <- plotly::subplot(
+      p1, p2,
+      nrows  = 2,
+      shareX = TRUE,
+      titleY = TRUE
+    )
+    
+    fig <- fig |>
+      plotly::layout(
+        annotations = list(
+          list(
+            text   = ref_assay_name_1,
+            x      = 0.5,     # center over top panel
+            y      = 1.02,    # just above top panel
+            xref   = "paper",
+            yref   = "paper",
+            xanchor = "center",
+            yanchor = "bottom",
+            showarrow = FALSE,
+            font = list(size = 12, color = "black")
+          ),
+          list(
+            text   = ref_assay_name_2,
+            x      = 0.5,     # center over bottom panel
+            y      = 0.48,    # just above bottom panel (adjust as needed)
+            xref   = "paper",
+            yref   = "paper",
+            xanchor = "center",
+            yanchor = "bottom",
+            showarrow = FALSE,
+            font = list(size = 12, color = "black")
+          )
+        )
+      )
+    #session$sendCustomMessage("coralie-toggle-loading", FALSE)
+    fig
+  })
+  
 }
 
 shinyApp(ui, server)
