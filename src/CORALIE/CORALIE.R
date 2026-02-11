@@ -20,7 +20,7 @@ sidebar <- dashboardSidebar(
     
     menuItem("Analysis Interface", 
              tabName = "tier1") 
-             
+    
   )
 )
 
@@ -297,7 +297,7 @@ body <- dashboardBody(
   .coralie-line:nth-child(9)  { left: 30%;  top: 18%; animation-delay: 1.5s; }
   .coralie-line:nth-child(10) { left: 46%;  top: 40%; animation-delay: 1.9s; }
 ")),
-    
+  
   tags$script(HTML("
   Shiny.addCustomMessageHandler('resize-tier1-bar', function() {
     var el = document.getElementById('tier1_subsystem_bar');
@@ -308,7 +308,7 @@ body <- dashboardBody(
     el.style.height = h + 'px';
   });
 ")),
-    # JS handlers to show/hide + update text from server
+  # JS handlers to show/hide + update text from server
   tags$script(HTML("
   Shiny.addCustomMessageHandler('coralie-toggle-loading', function(show) {
     var overlay = document.getElementById('coralie-loading-overlay');
@@ -341,7 +341,7 @@ body <- dashboardBody(
   });
 ")),
   
-    tags$style(HTML("
+  tags$style(HTML("
       body, .content-wrapper, .box-title, .sidebar-menu li a {
         font-family: Poppins, -apple-system, BlinkMacSystemFont, 'Segoe UI',
                      Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -469,7 +469,7 @@ body <- dashboardBody(
         to   { opacity: 1; transform: translateY(0); }
       }
     ")),
-    tags$script(HTML("
+  tags$script(HTML("
       // Add fade-in-panel to any box containing an updated output
       document.onshinyvalue = function(e) {
         var el = document.getElementById(e.target.id);
@@ -483,33 +483,33 @@ body <- dashboardBody(
       };
     ")),
   
-div(
-  id = "coralie-loading-overlay",
-  class = "loading-overlay hidden",
   div(
-    class = "coralie-loading-core",
+    id = "coralie-loading-overlay",
+    class = "loading-overlay hidden",
     div(
-      class = "coralie-loading-logo",
+      class = "coralie-loading-core",
       div(
-        class = "coralie-diamond",
-        div(class = "coralie-diamond-scan"),
-        div(class = "coralie-diamond-glow")
+        class = "coralie-loading-logo",
+        div(
+          class = "coralie-diamond",
+          div(class = "coralie-diamond-scan"),
+          div(class = "coralie-diamond-glow")
+        )
+      ),
+      div(id = "coralie-loading-text", "Preparing CORALIE analysis"),
+      div(id = "coralie-loading-subtext", ""),
+      div(
+        id = "coralie-loading-bar",
+        div(id = "coralie-loading-bar-fill")
       )
     ),
-    div(id = "coralie-loading-text", "Preparing CORALIE analysis"),
-    div(id = "coralie-loading-subtext", ""),
     div(
-      id = "coralie-loading-bar",
-      div(id = "coralie-loading-bar-fill")
+      class = "coralie-stripes",
+      # 5 blue + 5 red lines, positions/delays via nth-child in CSS
+      lapply(1:5, function(i) span(class = "coralie-line coralie-line-blue")),
+      lapply(1:5, function(i) span(class = "coralie-line coralie-line-red"))
     )
   ),
-  div(
-    class = "coralie-stripes",
-    # 5 blue + 5 red lines, positions/delays via nth-child in CSS
-    lapply(1:5, function(i) span(class = "coralie-line coralie-line-blue")),
-    lapply(1:5, function(i) span(class = "coralie-line coralie-line-red"))
-  )
-),
   
   tabItems(
     tabItem(
@@ -692,20 +692,20 @@ server <- function(input, output, session) {
         ui = fluidRow(
           class = "fade-in-up",
           column(width = 12,
-          box(
-            width = 12, status = "primary", solidHeader = TRUE,
-            title = "Reference assay selection",
-            selectInput(
-              inputId  = "reference_sel_1",
-              label    = "Select one or more reference assays",
-              choices  = NULL,
-              multiple = TRUE
-            ),
-            actionButton(
-              inputId = "load_reference_1",
-              label   = "Select reference assay(s)"
-            )
-          )
+                 box(
+                   width = 12, status = "primary", solidHeader = TRUE,
+                   title = "Reference assay selection",
+                   selectInput(
+                     inputId  = "reference_sel_1",
+                     label    = "Select one or more reference assays",
+                     choices  = NULL,
+                     multiple = TRUE
+                   ),
+                   actionButton(
+                     inputId = "load_reference_1",
+                     label   = "Select reference assay(s)"
+                   )
+                 )
           )
         ),
         immediate = TRUE
@@ -1543,11 +1543,11 @@ server <- function(input, output, session) {
       row_keep <- row_min <= thresh
       col_keep <- col_min <= thresh
     }
-
-
-cor_display <- cor_table_subsystem[row_keep, col_keep, drop = FALSE]
-validate(need(nrow(cor_display) > 0 && ncol(cor_display) > 0,
-              "No subsystems meet the correlation threshold criteria."))
+    
+    
+    cor_display <- cor_table_subsystem[row_keep, col_keep, drop = FALSE]
+    validate(need(nrow(cor_display) > 0 && ncol(cor_display) > 0,
+                  "No subsystems meet the correlation threshold criteria."))
     
     # Drop rows/cols that are completely NA
     row_keep <- rowSums(!is.na(cor_display)) > 0
@@ -1859,7 +1859,7 @@ validate(need(nrow(cor_display) > 0 && ncol(cor_display) > 0,
   observeEvent(plotly::event_data("plotly_click", source = "tier1_corr_grid"), {
     d <- plotly::event_data("plotly_click", source = "tier1_corr_grid")
     if (is.null(d) || nrow(d) == 0) return()
-    print(d)
+
     dat <- tier1_cor_data()
     req(dat)
     cor_long <- dat$cor_long
@@ -1873,7 +1873,7 @@ validate(need(nrow(cor_display) > 0 && ncol(cor_display) > 0,
     x_idx <- round(d$x[1])
     y_idx <- round(d$y[1])
     ref_idx <- round(d$curveNumber[1])+1
-
+    
     fp1_levels <- levels(cor_long$Fingerprint1)
     fp2_levels <- levels(cor_long$Fingerprint2)
     ref_levels <- levels(cor_long$Reference_Assay)
@@ -1890,7 +1890,7 @@ validate(need(nrow(cor_display) > 0 && ncol(cor_display) > 0,
     if (is.null(ref) && length(levels(cor_long$Reference_Assay)) == 1L) {
       ref <- levels(cor_long$Reference_Assay)[1]
     }
-    print(ref)
+
     # Debug once
     # print(list(raw = d, fp1 = fp1, fp2 = fp2, ref = ref))
     
@@ -1974,7 +1974,7 @@ validate(need(nrow(cor_display) > 0 && ncol(cor_display) > 0,
     if (is.null(sort_mode) || length(sort_mode) != 1L) {
       sort_mode <- "ref1"
     }
-
+    
     df <- switch(
       mode,
       high    = dat$result_high_response,
@@ -2193,7 +2193,7 @@ validate(need(nrow(cor_display) > 0 && ncol(cor_display) > 0,
     ex_subsystems_all <- dat$ex_subsystems_all
     fps              <- fingerprints_list_1()
     req(fps)
-
+    
     n_refs <- length(ref_ids)
     validate(
       need(n_refs >= 1, "Tier III: at least one reference assay is required.")
@@ -2237,7 +2237,7 @@ validate(need(nrow(cor_display) > 0 && ncol(cor_display) > 0,
     build_react_matrix <- function(ref_id) {
       assay    <- reference_list_1()[[ref_id]]      # same data frame used in Tier I
       fp_names <- names(fps)
-
+      
       react_pred_mat <- NULL
       sample_ids     <- assay[,1]
       
@@ -2343,7 +2343,7 @@ validate(need(nrow(cor_display) > 0 && ncol(cor_display) > 0,
       need(nrow(react_cors_df_1) > 0,
            "Tier III: no valid correlations for the first reference assay.")
     )
-
+    
     # ------------------------------------------------------------------
     # 4) If a second reference assay exists, compute its correlations
     # ------------------------------------------------------------------
@@ -2365,7 +2365,7 @@ validate(need(nrow(cor_display) > 0 && ncol(cor_display) > 0,
       
       fp_target_2 <- fp_names_sub_2[1]
       subs_vec_ref_2 <- get_subsystem_react_matrix(ref_assay_name_2, subsystem_name)
-
+      
       
       common_rows<-intersect(rownames(react_pred_ref_2),rownames(subs_vec_ref_2))
       
@@ -2381,11 +2381,11 @@ validate(need(nrow(cor_display) > 0 && ncol(cor_display) > 0,
       colnames(react_cors_df_2)<-react_meta_filt[colnames(react_cors_df_2),"RECON3D"]
       
       # Align reactions between ref 1 and ref 2
-       common_cols <- intersect(colnames(react_cors_df_1), colnames(react_cors_df_2))
-
-       react_cors_df_1 <- react_cors_df_1[, common_cols, drop = FALSE]
-       react_cors_df_2 <- react_cors_df_2[, common_cols, drop = FALSE]
-       
+      common_cols <- intersect(colnames(react_cors_df_1), colnames(react_cors_df_2))
+      
+      react_cors_df_1 <- react_cors_df_1[, common_cols, drop = FALSE]
+      react_cors_df_2 <- react_cors_df_2[, common_cols, drop = FALSE]
+      
       
       validate(
         need(nrow(react_cors_df_1) > 0,
@@ -2429,7 +2429,7 @@ validate(need(nrow(cor_display) > 0 && ncol(cor_display) > 0,
     
     rows    <- rev(hm_tmp$x$layout$yaxis2$ticktext)
     columns <- hm_tmp$x$layout$xaxis$ticktext
-
+    
     if(is.null(rows)){
       p1 <- hm_tmp
       
@@ -2500,7 +2500,7 @@ validate(need(nrow(cor_display) > 0 && ncol(cor_display) > 0,
       #session$sendCustomMessage("coralie-toggle-loading", FALSE)
       return(p1)
     }
-
+    
     # Second panel
     p2 <- heatmaply::heatmaply(
       react_cors_df_2[rows, columns, drop = FALSE],
