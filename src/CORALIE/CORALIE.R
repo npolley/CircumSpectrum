@@ -2270,7 +2270,7 @@ server <- function(input, output, session) {
           if (!ncol(new_dat)) next  # nothing usable
           
           keep_rows <- rowSums(is.na(new_dat)) == 0
-          newDat <- new_dat[keep_rows, , drop = FALSE]
+          new_dat <- new_dat[keep_rows, , drop = FALSE]
           if (!nrow(new_dat)) next
           
           pred <- predict(
