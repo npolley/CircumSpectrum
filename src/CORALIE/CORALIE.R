@@ -987,6 +987,14 @@ server <- function(input, output, session) {
           newDat <- as.matrix(assay[, coef_names, drop = FALSE])
           colnames(newDat) <- coef_names
           
+          keep_cols <- colSums(!is.na(newDat)) > 0
+          newDat <- newDat[, keep_cols, drop = FALSE]
+          if (!ncol(newDat)) next  # nothing usable
+          
+          keep_rows <- rowSums(is.na(newDat)) == 0
+          newDat <- newDat[keep_rows, , drop = FALSE]
+          if (!nrow(newDat)) next
+          
           pred_tot <- predict(
             final_cls[[idx]],
             newdata   = newDat,
@@ -2256,6 +2264,14 @@ server <- function(input, output, session) {
           
           new_dat <- as.matrix(assay[, feats, drop = FALSE])
           colnames(new_dat) <- feats
+          
+          keep_cols <- colSums(!is.na(new_dat)) > 0
+          new_dat <- new_dat[, keep_cols, drop = FALSE]
+          if (!ncol(new_dat)) next  # nothing usable
+          
+          keep_rows <- rowSums(is.na(new_dat)) == 0
+          newDat <- new_dat[keep_rows, , drop = FALSE]
+          if (!nrow(new_dat)) next
           
           pred <- predict(
             model,
