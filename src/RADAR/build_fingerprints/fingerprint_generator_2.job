@@ -1,0 +1,12 @@
+#!/bin/bash
+#SBATCH -J fingerprint_generator_2
+#SBATCH -t 0-1:00:00          
+#SBATCH -o fingerprint_generator_2.out
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=1     
+#SBATCH --mem=4G              
+
+module load statistics/R/4.3.0
+
+Rscript fingerprint_generator_2.R "$OBJ"
+
