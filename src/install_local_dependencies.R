@@ -1,5 +1,5 @@
 # install_local_dependencies.R
-# Install all required CRAN packages for local CircumSpectrum applications
+# Install all required CRAN packages for local CircumSpectrum applications (RADAR-xCheck, SOURIS, and CORALIE)
 
 required_packages <- c(
   "shiny",
