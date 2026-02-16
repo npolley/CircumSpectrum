@@ -67,7 +67,7 @@ RADAR-xCheck uses:
 - Filterable tables of significant features.  
 - A textual analysis report summarizing cohorts/assays, stratifications, inner/outer comparisons, thresholds, and run time.
 
-**Output of this stage:** stratified views and exports of flux-derived fingerprints and features, which then feed into fingerprint building.
+**Output of this stage:** stratified views and exports of flux-derived comparisons and features, which then feed into fingerprint building.
 
 ---
 
@@ -75,7 +75,7 @@ RADAR-xCheck uses:
 
 The `build_fingerprints` folder constructs formal subsystem-level **fingerprints** from the flux and feature outputs that have been prepared and explored via RADAR-xCheck.
 
-- Take aggregated flux tables (e.g. `<ASSAY>_metabTable.csv`) and relevant metadata used in RADAR-xCheck.  
+- Take fingerprint preparation objects produced by RADAR-xCheck.  
 - Fit subsystem-level models (e.g. classifiers) that summarize metabolic behavior as fingerprint scores.  
 - For each assay, write:
   - Fingerprint object: `data/fingerprints/<FINGERPRINT_NAME>_.rds`.  
@@ -87,7 +87,7 @@ These objects contain:
 - Reaction-level coefficients for each subsystem fingerprint model.  
 - Labels describing which groups the fingerprint separates (e.g. high vs low activity).
 
-**Output of this stage:** reusable fingerprint objects and prep metadata for each assay, suitable for anatomy analysis and downstream visualization.
+**Output of this stage:** reusable fingerprint objects and prep metadata for each assay, suitable for phenotypic analysis and downstream visualization.
 
 ---
 
