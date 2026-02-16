@@ -5,7 +5,7 @@
  <h1 align="center">RADAR-SCepter (prototype)</h1>
 
  <p align="center">
-  RADAR-SCepter is an experimental single-cell extension of the RADAR framework.  
+  RADAR-SCepter (Single-Cell Exploratory Projection Targetting Enzymatic Reactions) is an experimental single-cell extension of the RADAR framework.  
 This codebase is a **non-functioning work in progress** and is **not** suitable for production or publication-grade analyses yet.
  </p>
 
