@@ -47,7 +47,7 @@ Tier 2 focuses on pairwise comparison of subsystem-level fingerprint features fo
 Typical workflow:
 
 1. **Choose two fingerprints**  
-   - Select an pair of fingerprints from the interactive Tier 1 correlation plot for detailed comparison.  
+   - Select an intersecting pair of fingerprints from the interactive Tier 1 correlation plot for detailed comparison.  
 2. **Select display features**  
    - Optionally filter to specific subsystem models significant to phenotypic output in reference assay. Select hierarchical clustering or diagonal optimisation.  
 3. **Compute and visualize correlations**  
