@@ -1,5 +1,5 @@
 > <p align="center">
->   <img src="../../img/souris.png" alt="SOURIS logo" width="160">
+>   <img src="../../img/souris.png" alt="SOURIS logo" width="400">
 > </p>
 >
 > <h1 align="center">SOURIS</h1>
