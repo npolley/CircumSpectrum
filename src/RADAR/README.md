@@ -1,6 +1,6 @@
 # RADAR analysis pipeline overview
 
-This README summarizes the main analysis flow in the RADAR project, from RNA-seq–based flux inference all the way to fingerprint anatomy with High-Activity / Low-Activity (HA/LA) graphs:
+This README summarizes the main analysis flow in the RADAR (Rapid Assessment of Differentially-Active Reactions) project, from RNA-seq–based flux inference all the way to fingerprint anatomy with High-Activity / Low-Activity (HA/LA) graphs:
 
 > **run_imat → RADAR_xCheck → build_fingerprints → HA/LA graphs**
 
