@@ -16,7 +16,7 @@
 
 The app supports two main analysis modes:
 
-- **Cohort (observational) mode** – stratified analysis of flux fingerprints across clinical and/or gene-expression–defined subgroups within RADAR cohorts.  
+- **Cohort (observational study) mode** – stratified analysis of flux fingerprints across clinical and/or gene-expression–defined subgroups within RADAR cohorts.  
 - **Experimental mode** – analysis of intervention datasets (e.g. metformin assays) using flexible “outer” and “inner” comparison definitions.
 
 In both modes, the interface provides interactive plots, tables, and a textual report summarizing the stratification and statistics used.
