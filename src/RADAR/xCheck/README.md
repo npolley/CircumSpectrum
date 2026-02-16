@@ -1,17 +1,13 @@
  <p align="center">
-   <img src="../../img/radar_xcheck.png" alt="xCheck logo" width="160">
+   <img src="../../../img/radar_xcheck.png" alt="xCheck logo" width="160">
  </p>
 
  <h1 align="center">RADAR-xCheck</h1>
 
 <p align="center">
-
   RADAR-xCheck is an interactive interface for exploring metabolic flux distributions by subsystem and associated clinical or experimental metadata from the RADAR project. It also facilitates the export of selected stratification comparisons as fingerprint preparation objects.
   It is implemented as a Shiny dashboard (`xCheck.R`) with a small shell wrapper (`xCheck_gui.sh`) for convenient launch.</p>
 
-<p align="center">
-   It offers linked bulk and single-cell dashboards, allowing you to move from cohort-level fingerprint scores down to subsystem and reaction AUCs, with Seurat FeaturePlots for spatial and cluster-aware visualization.
-</p>
 
 # RADAR-xCheck
 
