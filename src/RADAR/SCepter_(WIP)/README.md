@@ -1,5 +1,5 @@
  <p align="center">
-   <img src="../../img/radar_scepter.png" alt="SCepter logo" width="400">
+   <img src="../../../img/radar_scepter.png" alt="SCepter logo" width="400">
  </p>
 
  <h1 align="center">RADAR-SCepter (prototype)</h1>
