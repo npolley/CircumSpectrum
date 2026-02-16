@@ -58,7 +58,7 @@ Each dataset corresponds to a subdirectory under `RADAR_xCheck_experimental_assa
 | `MET_PDAC`                 | Ferbeyre (2022)              | GSE210562     | Metformin – pancreatic ductal adenocarcinoma, KP4 cells (DMEM)        |
 | `MET_AML`                  | Scotland (2017)              | GSE97346      | Metformin – AML cell lines (HL60, KG1a, MOLM14, U937)                 |
 
-Use these GEO accessions to retrieve the original raw or processed data and associated metadata from NCBI GEO, if needed for re-analysis or verification.[file:16]
+Use these GEO accessions to retrieve the original raw or processed data and associated metadata from NCBI GEO, if needed for re-analysis or verification.
 
 ---
 
