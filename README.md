@@ -98,3 +98,68 @@
 > ```
 >
 > Consult your cluster documentation or admins for site-specific details on CPLEX and Rcplex deployment.
+>
+> ---
+>
+> ## Running Bash scripts on Windows
+>
+> The provided TUI/GUI launchers and helper scripts are written as Bash scripts and are designed for Unix-like shells (Linux, macOS). On Windows you can still use them without modification via either **Git Bash** or **Windows Subsystem for Linux (WSL)**, or by calling the underlying R entry points directly.
+>
+> ### Option 1: Git Bash (run Bash scripts on Windows)
+>
+> 1. **Install Git for Windows**
+>    - Download from https://git-scm.com/download/win and install Git Bash.
+>
+> 2. **Open Git Bash in the repository**
+>    - In Explorer, navigate to the CircumSpectrum repository.
+>    - Right-click inside the folder and choose **“Git Bash Here”**.
+>
+> 3. **Run the Bash scripts as on Linux**
+>    - For example:
+>
+>    ```bash
+>    ./SOURIS_gui.sh
+>    ./xCheck_gui.sh
+>    ```
+>
+>    - If you see “Permission denied”, mark the script as executable:
+>
+>    ```bash
+>    chmod +x SOURIS_gui.sh
+>    chmod +x xCheck_gui.sh
+>    ```
+>
+> 4. **Ensure Rscript is on the PATH**
+>    - Install R for Windows from https://cran.r-project.org/.
+>    - Make sure `Rscript.exe` is on your PATH so commands like:
+>
+>    ```bash
+>    Rscript src/install_local_dependencies.R
+>    ```
+>
+>    work from Git Bash.
+>
+> ### Option 2: Windows Subsystem for Linux (WSL)
+>
+> 1. **Open a WSL shell** (e.g. Ubuntu).
+> 2. **Clone or access the repo inside WSL**, then:
+>
+>    ```bash
+>    cd /path/to/CircumSpectrum
+>    ./SOURIS_gui.sh
+>    ./xCheck_gui.sh
+>    ```
+>
+> 3. Install R and required system libraries inside WSL, separate from your Windows R installation.
+>
+> ### Option 3: Direct Rscript invocation on Windows
+>
+> If you prefer not to use Bash at all, you can call the underlying R scripts directly from Command Prompt or PowerShell:
+>
+> ```powershell
+> Rscript src/install_local_dependencies.R
+> Rscript src/install_cluster_dependencies.R
+> Rscript SOURIS.R
+> ```
+>
+> This bypasses the Bash wrappers, but the analyses and GUIs behave identically as long as the working directory is the project root and R can find the required scripts and data.
