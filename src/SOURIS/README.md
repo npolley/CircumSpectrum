@@ -16,7 +16,7 @@
 >
 > ## Features
 >
-> - Custom SOURIS visual theme with animated loading overlay and smooth fade‑in panels.
+> - Modern SOURIS visual theme with animated loading overlay and smooth fade‑in panels.
 > - **Bulk tab**
 >   - Load one fingerprint object (`.rds`) and two reference assays (`.csv`).
 >   - Visualize aggregated fingerprint scores per reference assay (violin + boxplots with Wilcoxon p‑values and significance stars).
