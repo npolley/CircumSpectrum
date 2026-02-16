@@ -136,3 +136,4 @@ These elements are implemented via custom CSS and JavaScript hooks within `xChec
    - `Rscript xCheck.R` (or `shiny::runApp("xCheck.R")` from an R session).
 4. Open the displayed URL in a web browser if it does not open automatically.  
 5. Use the “observational” and “experimental” tabs to configure stratifications, run analyses, inspect plots/tables, and export figures or tables as needed.
+6. Click "Download Fingerprint Preparation Object" – Selected cohort stratifications, associated sample metadata, and their corresponding flux profiles are bundled into self‑contained fingerprint preparation objects and written to the fingerprint_prep_objects/ folder, where they can be used as standardized inputs for downstream fingerprint training and evaluation.
