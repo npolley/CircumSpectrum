@@ -54,22 +54,23 @@ Installing IBM CPLEX Optimization Studio
 
 CPLEX itself must be installed system-wide; it is not managed by these R scripts.
 
-    Academic use (free):
+Academic use (free):
 
-        Register via IBM’s academic / SkillsBuild portal and request access to IBM ILOG CPLEX Optimization Studio.
+    Register via IBM’s academic / SkillsBuild portal and request access to IBM ILOG CPLEX Optimization Studio.
 
-        Download the installer for your platform and follow IBM’s installation instructions.
+    Download the installer for your platform and follow IBM’s installation instructions.
 
-    Non‑academic / production use:
+Non‑academic / production use:
 
-        See the product page:
-        https://www.ibm.com/products/ilog-cplex-optimization-studio
+    See the product page:
+    https://www.ibm.com/products/ilog-cplex-optimization-studio
 
 On clusters, CPLEX is often provided as a module, for example:
 
+```bashscript
 bash
 module load cplex
-
+```
 Check your cluster documentation for the correct module name and version.
 Installing the Rcplex R interface
 
@@ -80,17 +81,17 @@ source("src/install_cplex_rcplex.R")
 ```
 This script:
 
-    Checks for common CPLEX environment variables (e.g. CPLEX_STUDIO_DIR, CPLEX_STUDIO_LIB, CPLEX_PATH).
+Checks for common CPLEX environment variables (e.g. CPLEX_STUDIO_DIR, CPLEX_STUDIO_LIB, CPLEX_PATH).
 
-    Installs Rcplex dependencies (e.g. slam, Matrix) if needed.
+Installs Rcplex dependencies (e.g. slam, Matrix) if needed.
 
-    Attempts to install Rcplex from source and prints hints if compilation fails.
+Attempts to install Rcplex from source and prints hints if compilation fails.
 
 If Rcplex fails to compile:
 
-    Ensure the CPLEX module is loaded (module load cplex), with include and library paths correctly set.
+Ensure the CPLEX module is loaded (module load cplex), with include and library paths correctly set.
 
-    If your site provides a prebuilt Rcplex tarball, you can install it manually, for example:
+If your site provides a prebuilt Rcplex tarball, you can install it manually, for example:
 
 ```r
 install.packages("Rcplex_0.3-6.tar.gz", repos = NULL, type = "source")
