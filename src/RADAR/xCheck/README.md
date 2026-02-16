@@ -16,7 +16,7 @@
 
 The app supports two main analysis modes:
 
-- **Cohort (observational study) mode** – stratified analysis of flux fingerprints across clinical and/or gene-expression–defined subgroups within RADAR cohorts.  
+- **Cohort (observational study) mode** – stratified analysis of iMAT fluxes across clinical and/or gene-expression–defined subgroups within predefined RADAR cohorts.  
 - **Experimental mode** – analysis of intervention datasets (e.g. metformin assays) using flexible “outer” and “inner” comparison definitions.
 
 In both modes, the interface provides interactive plots, tables, and a textual report summarizing the stratification and statistics used.
@@ -77,7 +77,7 @@ In the “experimental” tab, the app:
 
 After an analysis is run (in either mode), the app provides:
 
-- **Volcano-style subsystem plot (“plot1”)**  
+- **Subsystem plot**  
   - X-axis: metabolic subsystems.  
   - Y-axis: signed log p-value (direction + significance).  
   - Points: metabolites/flux features, colored by:
@@ -106,6 +106,11 @@ After an analysis is run (in either mode), the app provides:
     - AUC/log2FC/FDR thresholds.
     - Errors or warnings (if any).
     - Timestamp of report generation.
+   
+- **Reaction-level boxplots**  
+  - Displays boxplots of flux values for selected reactions across user-defined groups (e.g. clinical strata or experimental conditions).
+    - Helps interpret and validate significant reactions from xCheck analyses at a single-reaction level.
+    - Correlation plots are provided for continuous outer variables.
 
 ## User experience and theming
 
