@@ -1,6 +1,6 @@
 # SOURIS
 
-SOURIS is an interactive Shiny application to explore metabolic fingerprint classifiers on bulk and single‑cell transcriptomics data, compute subsystem‑ and reaction‑level metrics, and visualize them with linked plots.
+SOURIS is an interactive Shiny application to explore individual metabolic fingerprint classifiers on bulk and single‑cell transcriptomics data, compute subsystem‑ and reaction‑level metrics, and visualize them with linked plots.
 
 The app provides:
 - A “Bulk samples” dashboard for running fingerprint models on reference assays.
@@ -18,7 +18,7 @@ The app provides:
   - Inspect subsystem‑level AUC and drill down to reaction‑level AUC and raw values.
 - **Single‑cell tab**
   - Reuse the same fingerprints and reference assays.
-  - Load Seurat objects (`.rds`) with matching sample IDs.
+  - Load Seurat objects (`.rds`) with matching sample IDs to reference assays.
   - Visualize per‑cell fingerprint, subsystem, and reaction scores via `FeaturePlot`, split by reference group.
 - **Statistics**
   - AUC computation via Mann–Whitney U on predicted scores.
@@ -34,19 +34,22 @@ The preferred way to launch SOURIS is through the provided TUI shell wrapper:
 #!/usr/bin/env bash
 
 Rscript -e "shiny::runApp('SOURIS.R', launch.browser = TRUE)"
+```
 
 From the repository root:
 
-bash
-chmod +x run_souris.sh      # if you name the script run_souris.sh
-./run_souris.sh
+```bash
+chmod +x SOURIS_gui.sh  
+./SOURIS_gui.sh
+```
 
 This starts the Shiny app defined in SOURIS.R and opens it in your default web browser.
 
 You can also launch it directly from R:
 
-r
+```r
 shiny::runApp("SOURIS.R", launch.browser = TRUE)
+```
 
 Installation
 1. Clone the repository
