@@ -65,7 +65,7 @@ Use these GEO accessions to retrieve the original raw or processed data and asso
 ## How to use this template
 
 1. Clone or download the **CircumSpectrum** GitHub repository.  
-2. Place this `data/` folder at the top level of the repository (next to `src/`).  
+2. Ensure that this `data/` folder is at the top level of the repository (next to `src/`).  
 3. Download the full dataset from Zenodo:  
    - https://doi.org/10.5281/zenodo.18634088  
 4. Extract the downloaded archive and copy its contents into the corresponding subdirectories of this `data/` template, preserving all directory names and structure.  
