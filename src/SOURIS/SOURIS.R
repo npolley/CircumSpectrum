@@ -10,6 +10,7 @@ library(tidyr)
 library(uwot)
 library(ggpubr)
 library(Seurat)
+library(caret)
 
 #----------------------------------------------------------
 # UI
