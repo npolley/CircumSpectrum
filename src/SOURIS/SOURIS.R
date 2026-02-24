@@ -11,6 +11,8 @@ library(uwot)
 library(ggpubr)
 library(Seurat)
 library(caret)
+library(cowplot)
+library(Seurat)
 
 #----------------------------------------------------------
 # UI
@@ -1711,19 +1713,28 @@ server <- function(input, output, session) {
           size = 9
         ),
         axis.text.y = ggplot2::element_text(color = "#283046", size = 9),
-        axis.title.x = ggplot2::element_text(color = "#5f6473", size = 10, margin = margin(t = 6)),
-        axis.title.y = ggplot2::element_text(color = "#5f6473", size = 10, margin = margin(r = 6)),
+        axis.title.x = ggplot2::element_text(color = "#5f6473", size = 10, margin = ggplot2::margin(t = 6)),
+        axis.title.y = ggplot2::element_text(color = "#5f6473", size = 10, margin = ggplot2::margin(r = 6)),
         plot.title = ggplot2::element_text(
           hjust = 0.5,
           face = "bold",
           color = "#283046",
           size = 11,
-          margin = margin(b = 6)
+          margin = ggplot2::margin(b = 6)
         ),
         legend.position = "none"
       )
     session$sendCustomMessage("souris-show-plot", "souris-violin-fp-wrapper")
-    plotly::ggplotly(p, tooltip = c("x", "y"))
+    plt <- plotly::ggplotly(p, tooltip = c("x", "y"))
+    plt <- plotly::config(
+      plt,
+      toImageButtonOptions = list(
+        format   = "svg",   # this makes the camera button download SVG
+        filename = "souris_violin_fp"
+      )
+    )
+    
+    plt
   })
 
   output$souris_auc_bar <- plotly::renderPlotly({
@@ -1758,7 +1769,7 @@ server <- function(input, output, session) {
 
 
     session$sendCustomMessage("souris-show-plot", "souris-auc-bar-wrapper")
-    plotly::plot_ly(
+    plt<-plotly::plot_ly(
       data = auc_df,
       x = ~AUC,
       y = ~ factor(Subsystem, levels = Subsystem),
@@ -1806,6 +1817,15 @@ server <- function(input, output, session) {
         paper_bgcolor = "rgba(0,0,0,0)",
         hovermode = "closest"
       )
+    plt <- plotly::config(
+      plt,
+      toImageButtonOptions = list(
+        format   = "svg",
+        filename = "souris_auc_bar"
+      )
+    )
+    
+    plt
   })
 
   observeEvent(input$souris_load_reference_sc, {
@@ -2205,8 +2225,59 @@ server <- function(input, output, session) {
               width = 12,
               box(
                 width = 12, status = "primary", solidHeader = TRUE,
-                title = "Single-cell fingerprint scores FeaturePlot",
-                plotOutput("souris_sc_featureplot", height = "550px")
+                title = NULL,
+                div(
+                  style = "display:flex; flex-direction:column; height:550px;",
+                  div(
+                    id = "souris-sc-feature-fp-header",
+                    style = "
+            position: sticky;
+            top: 0;
+            z-index: 5;
+            padding: 6px 10px;
+            background: linear-gradient(135deg, #002B5C, #0D47A1);
+            color: #E3F2FD;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+          ",
+                    tags$div(
+                      style = 'display:flex; flex-direction:column; gap:2px;',
+                      tags$div(
+                        style = 'font-size:12px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase;',
+                        "Single-cell fingerprint scores FeaturePlot"
+                      ),
+                      tags$div(
+                        style = 'font-size:11px; color:#BBDEFB;',
+                        "Total fingerprint scores per reference group · single-cell"
+                      )
+                    ),
+                    div(
+                      style = "display:flex; align-items:center; justify-content:flex-end;",
+                      downloadButton(
+                        "download_souris_sc_featureplot",
+                        "Download PDF",
+                        style = "
+                background: rgba(227,242,253,0.12);
+                border: 1px solid #BBDEFB;
+                color: #E3F2FD;
+                padding: 2px 10px;
+                font-size: 10px;
+                border-radius: 999px;
+              "
+                      )
+                    )
+                  ),
+                  div(
+                    style = "flex:1 1 auto; overflow-y:auto; padding:4px 0 0 0;",
+                    plotOutput(
+                      "souris_sc_featureplot",
+                      height = "100%", width = "100%"
+                    )
+                  )
+                )
               )
             )
           )
@@ -2348,21 +2419,30 @@ server <- function(input, output, session) {
           size  = 9
         ),
         axis.text.y  = ggplot2::element_text(color = "#283046", size = 9),
-        axis.title.x = ggplot2::element_text(color = "#5f6473", size = 10, margin = margin(t = 6)),
-        axis.title.y = ggplot2::element_text(color = "#5f6473", size = 10, margin = margin(r = 6)),
+        axis.title.x = ggplot2::element_text(color = "#5f6473", size = 10, margin = ggplot2::margin(t = 6)),
+        axis.title.y = ggplot2::element_text(color = "#5f6473", size = 10, margin = ggplot2::margin(r = 6)),
         plot.title   = ggplot2::element_text(
           hjust  = 0.5,
           face   = "bold",
           color  = "#283046",
           size   = 11,
-          margin = margin(b = 6)
+          margin = ggplot2::margin(b = 6)
         ),
         legend.position = "none"
       )
     
     session$sendCustomMessage("souris-show-plot", "souris-violin-fp-sc-wrapper")
     
-    plotly::ggplotly(p, tooltip = c("x", "y"))
+    plt <- plotly::ggplotly(p, tooltip = c("x", "y"))
+    plt <- plotly::config(
+      plt,
+      toImageButtonOptions = list(
+        format   = "svg",   # this makes the camera button download SVG
+        filename = "souris_violin_fp_sc"
+      )
+    )
+    
+    plt
   })
 
 
@@ -2429,21 +2509,30 @@ server <- function(input, output, session) {
         panel.grid.minor   = ggplot2::element_blank(),
         axis.text.x  = ggplot2::element_text(color = "#283046", size = 9),
         axis.text.y  = ggplot2::element_text(color = "#283046", size = 9),
-        axis.title.x = ggplot2::element_text(color = "#5f6473", size = 10, margin = margin(t = 6)),
-        axis.title.y = ggplot2::element_text(color = "#5f6473", size = 10, margin = margin(r = 6)),
+        axis.title.x = ggplot2::element_text(color = "#5f6473", size = 10, margin = ggplot2::margin(t = 6)),
+        axis.title.y = ggplot2::element_text(color = "#5f6473", size = 10, margin = ggplot2::margin(r = 6)),
         plot.title   = ggplot2::element_text(
           hjust  = 0.5,
           face   = "bold",
           color  = "#283046",
           size   = 11,
-          margin = margin(b = 6)
+          margin = ggplot2::margin(b = 6)
         ),
         legend.position = "none"
       )
     
     session$sendCustomMessage("souris-show-plot", "souris-auc-bar-sc-wrapper")
     
-    plotly::ggplotly(pauc, tooltip = c("x", "y"), source = "souris_auc_sc")
+    plt <- plotly::ggplotly(pauc, tooltip = c("x", "y"), source = "souris_auc_sc")
+    plt <- plotly::config(
+      plt,
+      toImageButtonOptions = list(
+        format   = "svg",   # this makes the camera button download SVG
+        filename = "souris_auc_bar_sc"
+      )
+    )
+    
+    plt
   })
 
   observeEvent(
@@ -2640,8 +2729,44 @@ server <- function(input, output, session) {
                 width = 12,
                 box(
                   width = 12, status = "primary", solidHeader = TRUE,
-                  title = "FeaturePlot of selected subsystem scores (single-cell)",
-                  plotOutput("souris_sc_featureplot_subsystem", height = "500px")
+                  title = NULL,
+                  div(
+                    style = "display:flex; flex-direction:column; height:500px;",
+                    div(
+                      id = "souris-sc-feature-subsystem-header",
+                      style = "
+            position: sticky;
+            top: 0;
+            z-index: 5;
+            padding: 6px 10px;
+            background: linear-gradient(135deg, #002B5C, #0D47A1);
+            color: #E3F2FD;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+          ",
+                      tags$div(
+                        style = 'display:flex; flex-direction:column; gap:2px;',
+                        tags$div(
+                          style = 'font-size:12px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase;',
+                          uiOutput("souris_sc_featureplot_subsystem_title")
+                        ),
+                        tags$div(
+                          style = 'font-size:11px; color:#BBDEFB;',
+                          "Subsystem scores per reference group · single-cell"
+                        )
+                      )
+                    ),
+                    div(
+                      style = "flex:1 1 auto; overflow-y:auto; padding:4px 0 0 0;",
+                      plotOutput(
+                        "souris_sc_featureplot_subsystem",
+                        height = "100%", width = "100%"
+                      )
+                    )
+                  )
                 )
               ),
               div(id = "sc_reaction_featureplot_placeholder")
@@ -2939,14 +3064,14 @@ server <- function(input, output, session) {
           size = 9
         ),
         axis.text.y = ggplot2::element_text(color = "#283046", size = 9),
-        axis.title.x = ggplot2::element_text(color = "#5f6473", size = 10, margin = margin(t = 6)),
-        axis.title.y = ggplot2::element_text(color = "#5f6473", size = 10, margin = margin(r = 6)),
+        axis.title.x = ggplot2::element_text(color = "#5f6473", size = 10, margin = ggplot2::margin(t = 6)),
+        axis.title.y = ggplot2::element_text(color = "#5f6473", size = 10, margin = ggplot2::margin(r = 6)),
         plot.title = ggplot2::element_text(
           hjust  = 0.5,
           face   = "bold",
           color  = "#283046",
           size   = 11,
-          margin = margin(b = 6)
+          margin = ggplot2::margin(b = 6)
         ),
         legend.position = "none"
       )
@@ -2956,7 +3081,17 @@ server <- function(input, output, session) {
       set_souris_progress(show = FALSE)
     }
     session$sendCustomMessage("souris-show-plot", "souris-violin-subsys-wrapper")
-    plotly::ggplotly(p_sub, tooltip = c("x", "y"))
+
+    plt <- plotly::ggplotly(p_sub, tooltip = c("x", "y"))
+    plt <- plotly::config(
+      plt,
+      toImageButtonOptions = list(
+        format   = "svg",   # this makes the camera button download SVG
+        filename = "souris_violin_subsys"
+      )
+    )
+    
+    plt
   })
 
   output$souris_violin_subsys_sc <- plotly::renderPlotly({
@@ -3046,14 +3181,14 @@ server <- function(input, output, session) {
           size  = 9
         ),
         axis.text.y  = ggplot2::element_text(color = "#283046", size = 9),
-        axis.title.x = ggplot2::element_text(color = "#5f6473", size = 10, margin = margin(t = 6)),
-        axis.title.y = ggplot2::element_text(color = "#5f6473", size = 10, margin = margin(r = 6)),
+        axis.title.x = ggplot2::element_text(color = "#5f6473", size = 10, margin = ggplot2::margin(t = 6)),
+        axis.title.y = ggplot2::element_text(color = "#5f6473", size = 10, margin = ggplot2::margin(r = 6)),
         plot.title   = ggplot2::element_text(
           hjust  = 0.5,
           face   = "bold",
           color  = "#283046",
           size   = 11,
-          margin = margin(b = 6)
+          margin = ggplot2::margin(b = 6)
         ),
         legend.position = "none"
       )
@@ -3065,7 +3200,16 @@ server <- function(input, output, session) {
     
     session$sendCustomMessage("souris-show-plot", "souris-violin-subsys-sc-wrapper")
     
-    plotly::ggplotly(p_sub, tooltip = c("x", "y"))
+    plt <- plotly::ggplotly(p_sub, tooltip = c("x", "y"))
+    plt <- plotly::config(
+      plt,
+      toImageButtonOptions = list(
+        format   = "svg",   # this makes the camera button download SVG
+        filename = "souris_violin_subsys_sc"
+      )
+    )
+    
+    plt
   })
 
   output$souris_auc_reactions <- plotly::renderPlotly({
@@ -3167,14 +3311,14 @@ server <- function(input, output, session) {
         panel.grid.minor   = ggplot2::element_blank(),
         axis.text.x  = ggplot2::element_text(color = "#283046", size = 9),
         axis.text.y  = ggplot2::element_text(color = "#283046", size = 9),
-        axis.title.x = ggplot2::element_text(color = "#5f6473", size = 10, margin = margin(t = 6)),
-        axis.title.y = ggplot2::element_text(color = "#5f6473", size = 10, margin = margin(r = 6)),
+        axis.title.x = ggplot2::element_text(color = "#5f6473", size = 10, margin = ggplot2::margin(t = 6)),
+        axis.title.y = ggplot2::element_text(color = "#5f6473", size = 10, margin = ggplot2::margin(r = 6)),
         plot.title   = ggplot2::element_text(
           hjust  = 0.5,
           face   = "bold",
           color  = "#283046",
           size   = 11,
-          margin = margin(b = 6)
+          margin = ggplot2::margin(b = 6)
         ),
         legend.position = "none"
       )
@@ -3182,7 +3326,16 @@ server <- function(input, output, session) {
     # fade-in trigger for the reactions AUC panel
     session$sendCustomMessage("souris-show-plot", "souris-auc-reactions-wrapper")
 
-    plotly::ggplotly(p_rxn, tooltip = c("x", "y"))
+    plt <- plotly::ggplotly(p_rxn, tooltip = c("x", "y"))
+    plt <- plotly::config(
+      plt,
+      toImageButtonOptions = list(
+        format   = "svg",   # this makes the camera button download SVG
+        filename = "souris_auc_reactions"
+      )
+    )
+    
+    plt
   })
 
   output$souris_auc_reactions_sc <- plotly::renderPlotly({
@@ -3283,21 +3436,30 @@ server <- function(input, output, session) {
         panel.grid.minor   = ggplot2::element_blank(),
         axis.text.x  = ggplot2::element_text(color = "#283046", size = 9),
         axis.text.y  = ggplot2::element_text(color = "#283046", size = 9),
-        axis.title.x = ggplot2::element_text(color = "#5f6473", size = 10, margin = margin(t = 6)),
-        axis.title.y = ggplot2::element_text(color = "#5f6473", size = 10, margin = margin(r = 6)),
+        axis.title.x = ggplot2::element_text(color = "#5f6473", size = 10, margin = ggplot2::margin(t = 6)),
+        axis.title.y = ggplot2::element_text(color = "#5f6473", size = 10, margin = ggplot2::margin(r = 6)),
         plot.title   = ggplot2::element_text(
           hjust  = 0.5,
           face   = "bold",
           color  = "#283046",
           size   = 11,
-          margin = margin(b = 6)
+          margin = ggplot2::margin(b = 6)
         ),
         legend.position = "none"
       )
     
     session$sendCustomMessage("souris-show-plot", "souris-auc-reactions-sc-wrapper")
     
-    plotly::ggplotly(p_rxn, tooltip = c("x", "y"), source = "souris_auc_rxn_sc")
+    plt <- plotly::ggplotly(p_rxn, tooltip = c("x", "y"), source = "souris_auc_rxn_sc")
+    plt <- plotly::config(
+      plt,
+      toImageButtonOptions = list(
+        format   = "svg",   # this makes the camera button download SVG
+        filename = "souris_auc_reactions_sc"
+      )
+    )
+    
+    plt
   })
 
   output$souris_violin_reactions <- plotly::renderPlotly({
@@ -3499,14 +3661,14 @@ server <- function(input, output, session) {
           size  = 9
         ),
         axis.text.y  = ggplot2::element_text(color = "#283046", size = 9),
-        axis.title.x = ggplot2::element_text(color = "#5f6473", size = 10, margin = margin(t = 6)),
-        axis.title.y = ggplot2::element_text(color = "#5f6473", size = 10, margin = margin(r = 6)),
+        axis.title.x = ggplot2::element_text(color = "#5f6473", size = 10, margin = ggplot2::margin(t = 6)),
+        axis.title.y = ggplot2::element_text(color = "#5f6473", size = 10, margin = ggplot2::margin(r = 6)),
         plot.title   = ggplot2::element_text(
           hjust  = 0.5,
           face   = "bold",
           color  = "#283046",
           size   = 11,
-          margin = margin(b = 6)
+          margin = ggplot2::margin(b = 6)
         ),
         legend.position = "none"
       )
@@ -3518,7 +3680,16 @@ server <- function(input, output, session) {
 
     session$sendCustomMessage("souris-show-plot", "souris-violin-reactions-wrapper")
     
-    plotly::ggplotly(p, tooltip = c("text"))
+    plt <- plotly::ggplotly(p, tooltip = c("text"))
+    plt <- plotly::config(
+      plt,
+      toImageButtonOptions = list(
+        format   = "svg",   # this makes the camera button download SVG
+        filename = "souris_violin_reactions"
+      )
+    )
+    
+    plt
   })
 
   output$souris_violin_reactions_sc <- plotly::renderPlotly({
@@ -3533,7 +3704,7 @@ server <- function(input, output, session) {
     ref1 <- refs[1]
     ref2 <- refs[2]
     
-    # 1) Long df of raw reaction values
+    # 1) Long df of raw reaction values (unchanged)
     df_rxn_long <- do.call(
       rbind,
       lapply(refs, function(ref_id) {
@@ -3562,13 +3733,34 @@ server <- function(input, output, session) {
       "No reaction values available to plot."
     ))
     
-    df_rxn_long$Reference <- factor(df_rxn_long$Reference,
-                                    levels = unique(df_rxn_long$Reference))
+    # Join react_meta_filt metadata using safe matching
+    idx <- match(df_rxn_long$Reaction, rownames(react_meta_filt))
+    meta_df <- react_meta_filt[
+      idx,
+      c("RECON3D", "equation", "name", "compartments", "geneAssociation"),
+      drop = FALSE
+    ]
+    
+    missing_meta <- is.na(idx)
+    if (any(missing_meta)) {
+      meta_df$RECON3D[missing_meta] <- df_rxn_long$Reaction[missing_meta]
+    }
+    meta_df$name[is.na(meta_df$name)]               <- ""
+    meta_df$equation[is.na(meta_df$equation)]       <- ""
+    meta_df$compartments[is.na(meta_df$compartments)] <- ""
+    meta_df$geneAssociation[is.na(meta_df$geneAssociation)] <- ""
+    
+    df_rxn_long <- cbind(df_rxn_long, meta_df)
+    
+    df_rxn_long$Reference <- factor(
+      df_rxn_long$Reference,
+      levels = unique(df_rxn_long$Reference)
+    )
     
     recon_map <- get_recon_names(unique(df_rxn_long$Reaction))
     df_rxn_long$ReactionLabel <- recon_map[df_rxn_long$Reaction]
     
-    # 2) Per-reaction Wilcoxon between ref1 and ref2 (ordering + stars)
+    # 2) Per-reaction Wilcoxon (ordering + stars) (unchanged)
     df_pair <- df_rxn_long[df_rxn_long$Reference %in% c(ref1, ref2), ]
     
     stats_df <- df_pair |>
@@ -3594,7 +3786,7 @@ server <- function(input, output, session) {
     df_rxn_long$Reference <- factor(df_rxn_long$Reference,
                                     levels = c(ref1, ref2))
     
-    # 3) Star labels per reaction
+    # 3) Star labels per reaction (unchanged)
     p_to_stars <- function(p) {
       if (is.na(p))    return("ns")
       if (p < 0.0001) return("****")
@@ -3617,105 +3809,115 @@ server <- function(input, output, session) {
         y_pos = y_max * 1.08
       )
     
+    # Build x positions and hover text per row
     rxn_index <- as.numeric(df_rxn_long$ReactionLabel)
     offset <- ifelse(
       df_rxn_long$Reference == ref1, -0.2,
       ifelse(df_rxn_long$Reference == ref2, 0.2, 0)
     )
+    x_pos <- rxn_index + offset
     
-    p <- ggplot2::ggplot(
-      df_rxn_long,
-      ggplot2::aes(
-        y    = Value,
-        fill = Reference
-      )
-    ) +
-      # Violin at same x as boxplot
-      ggplot2::geom_violin(
-        ggplot2::aes(
-          x     = rxn_index + offset,
-          group = interaction(ReactionLabel, Reference)
-        ),
-        alpha  = 0.5,
-        scale  = "width",
-        trim   = FALSE,
-        color  = NA,
-        width  = 0.35
-      ) +
-      # Boxplot on top
-      ggplot2::geom_boxplot(
-        ggplot2::aes(
-          x     = rxn_index + offset,
-          group = interaction(ReactionLabel, Reference)
-        ),
-        outlier.size = 0.4,
-        alpha        = 0.9,
-        color        = "#455A64",
-        width        = 0.35
-      ) +
-      ggplot2::geom_segment(
-        data = star_df,
-        ggplot2::aes(
-          x    = x_num - 0.25,
-          xend = x_num + 0.25,
-          y    = y_pos,
-          yend = y_pos
-        ),
-        inherit.aes = FALSE,
-        linewidth   = 0.4
-      ) +
-      ggplot2::geom_text(
-        data = star_df,
-        ggplot2::aes(
-          x     = x_num,
-          y     = y_pos,
-          label = label
-        ),
-        vjust        = -0.2,
-        inherit.aes  = FALSE,
-        size         = 3
-      ) +
-      ggplot2::scale_x_continuous(
-        breaks = seq_along(levels(df_rxn_long$ReactionLabel)),
-        labels = levels(df_rxn_long$ReactionLabel)
-      ) +
-      ggplot2::scale_fill_manual(
-        values = setNames(
-          c("#1565C0", "#42A5F5"),
-          c(ref1,      ref2)
+    hover_text <- paste0(
+      "RECON3D: ", df_rxn_long$RECON3D, "\n",
+      "Name: ", df_rxn_long$name, "\n",
+      "Equation: ", df_rxn_long$equation, "\n",
+      "Compartments: ", df_rxn_long$compartments, "\n",
+      "GPR: ", df_rxn_long$geneAssociation, "\n",
+      "Reference: ", df_rxn_long$Reference, "\n",
+      "Value: ", signif(df_rxn_long$Value, 4)
+    )
+    
+    # Build plotly directly: one violin trace per reference
+    plt <- plotly::plot_ly()
+    
+    for (ref in c(ref1, ref2)) {
+      df_sub <- df_rxn_long[df_rxn_long$Reference == ref, , drop = FALSE]
+      x_sub  <- x_pos[df_rxn_long$Reference == ref]
+      txt    <- hover_text[df_rxn_long$Reference == ref]
+      
+      plt <- plt |>
+        plotly::add_trace(
+          type = "violin",
+          x    = x_sub,
+          y    = df_sub$Value,
+          text = txt,
+          hoverinfo = "text",
+          name = ref,
+          legendgroup = ref,
+          scalemode = "width",
+          spanmode  = "hard",
+          opacity   = 0.5,
+          line = list(color = "rgba(0,0,0,0)"),
+          fillcolor = if (ref == ref1) "#1565C0" else "#42A5F5",
+          showlegend = FALSE
         )
-      ) +
-      ggplot2::labs(
-        x = "Reaction (RECON3D)",
-        y = "Reaction value (reference assay)",
-        title = paste0(
-          "Per-reaction values in subsystem ", subsel,
-          " | ", ref1, " vs ", ref2
+    }
+    
+    # Add boxplot layer as separate traces if you still want them
+    for (ref in c(ref1, ref2)) {
+      df_sub <- df_rxn_long[df_rxn_long$Reference == ref, , drop = FALSE]
+      x_sub  <- x_pos[df_rxn_long$Reference == ref]
+      txt    <- hover_text[df_rxn_long$Reference == ref]
+      
+      plt <- plt |>
+        plotly::add_boxplot(
+          x    = x_sub,
+          y    = df_sub$Value,
+          text = txt,
+          hoverinfo = "text",
+          name = ref,
+          marker = list(
+            color = if (ref == ref1) "#1565C0" else "#42A5F5",
+            size  = 2
+          ),
+          line   = list(color = "#455A64"),
+          fillcolor = "rgba(255,255,255,0.9)",
+          boxpoints = FALSE,
+          showlegend = FALSE
         )
-      ) +
-      ggplot2::theme_minimal(base_size = 11) +
-      ggplot2::theme(
-        panel.background   = ggplot2::element_rect(fill = NA, colour = NA),
-        plot.background    = ggplot2::element_rect(fill = NA, colour = NA),
-        panel.grid.major.y = ggplot2::element_line(color = "#E0E4F0", linewidth = 0.25),
-        panel.grid.major.x = ggplot2::element_blank(),
-        panel.grid.minor   = ggplot2::element_blank(),
-        axis.text.x  = ggplot2::element_text(
-          angle = 45, hjust = 1, vjust = 1,
-          color = "#283046",
-          size  = 9
+    }
+    
+    # Add significance segments and labels as shapes/annotations
+    for (i in seq_len(nrow(star_df))) {
+      plt <- plt |>
+        plotly::add_segments(
+          x    = star_df$x_num[i] - 0.25,
+          xend = star_df$x_num[i] + 0.25,
+          y    = star_df$y_pos[i],
+          yend = star_df$y_pos[i],
+          inherit = FALSE,
+          showlegend = FALSE,
+          line = list(color = "black", width = 0.4)
+        ) |>
+        plotly::add_text(
+          x = star_df$x_num[i],
+          y = star_df$y_pos[i],
+          text = star_df$label[i],
+          showlegend = FALSE,
+          textposition = "top center"
+        )
+    }
+    
+    plt <- plt |>
+      plotly::layout(
+        xaxis = list(
+          title = "Reaction (RECON3D)",
+          tickmode = "array",
+          tickvals = seq_along(levels(df_rxn_long$ReactionLabel)),
+          ticktext = levels(df_rxn_long$ReactionLabel)
         ),
-        axis.text.y  = ggplot2::element_text(color = "#283046", size = 9),
-        axis.title.x = ggplot2::element_text(color = "#5f6473", size = 10, margin = margin(t = 6)),
-        axis.title.y = ggplot2::element_text(color = "#5f6473", size = 10, margin = margin(r = 6)),
-        plot.title   = ggplot2::element_text(
-          hjust  = 0.5,
-          face   = "bold",
-          color  = "#283046",
-          size   = 11,
-          margin = margin(b = 6)
+        yaxis = list(
+          title = "Reaction value (reference assay)"
         ),
-        legend.position = "none"
+        title = list(
+          text = paste0(
+            "Per-reaction values in subsystem ", subsel,
+            " | ", ref1, " vs ", ref2
+          )
+        ),
+        hovermode = "closest",
+        paper_bgcolor = "rgba(0,0,0,0)",
+        plot_bgcolor  = "rgba(0,0,0,0)"
       )
     
     reactions_done(TRUE)
@@ -3723,9 +3925,12 @@ server <- function(input, output, session) {
       set_souris_progress(show = FALSE)
     }
     
-    session$sendCustomMessage("souris-show-plot", "souris-violin-reactions-sc-wrapper")
+    session$sendCustomMessage(
+      "souris-show-plot",
+      "souris-violin-reactions-sc-wrapper"
+    )
     
-    plotly::ggplotly(p, tooltip = c("x", "y"))
+    plt
   })
 
   output$souris_sc_featureplot <- renderPlot({
@@ -3734,13 +3939,87 @@ server <- function(input, output, session) {
 
     obj_sc <- souris_sc_object()[[1]]
 
-    Seurat::FeaturePlot(
+    p_list <- Seurat::FeaturePlot(
       obj_sc,
       features = "SOURIS_fingerprint_score",
-      split.by = "SOURIS_reference_group",
-    ) + scale_color_gradient2(low = "blue2", mid = "lavenderblush", high = "firebrick1", midpoint = 0.5, limits = c(0, 1))
+      split.by = "SOURIS_reference_group"
+    ) 
+    
+    fix.sc <- scale_color_gradient2(
+      low = "blue2",
+      mid = "lavenderblush",
+      high = "firebrick1",
+      midpoint = 0.5,
+      limits = c(0,1)
+    )
+    p_list <- lapply(
+      p_list,
+      function(x) {
+        x + fix.sc +
+          theme(
+            axis.title.y = element_blank(),
+            axis.title.x = element_blank()
+          )
+      }
+    )
+    
+    # legend from first panel
+    p_legend_src <- p_list[[1]] + theme(legend.position = "right")
+    leg <- cowplot::get_legend(p_legend_src)
+    
+    # panels without legends
+    p_list_nl <- lapply(p_list, function(x) x + theme(legend.position = "none"))
+    p_panels  <- cowplot::plot_grid(plotlist = p_list_nl)
+    
+    cowplot::plot_grid(
+      p_panels,
+      leg,
+      ncol = 2,
+      rel_widths = c(1, 0.08)
+    )
+    
   })
-
+  
+  output$download_souris_sc_featureplot <- downloadHandler(
+    filename = function() {
+      paste0("souris_sc_featureplot_", Sys.Date(), ".pdf")
+    },
+    content = function(file) {
+      # same plot logic, but drawn into an SVG device
+      req(souris_sc_object())
+      req(sc_fingerprint_scores())
+      
+      obj_sc <- souris_sc_object()[[1]]
+      
+      plist <- Seurat::FeaturePlot(
+        obj_sc,
+        features = "SOURIS_fingerprint_score",
+        split.by = "SOURIS_reference_group"
+      )
+      
+      fix.sc <- scale_color_gradient2(
+        low = "blue2",
+        mid = "lavenderblush",
+        high = "firebrick1",
+        midpoint = 0.5,
+        limits = c(0, 1)
+      )
+      plist <- lapply(plist, function(x) x + fix.sc)
+      p <- cowplot::plot_grid(plotlist = plist)
+      
+      pdf(file, width = 8, height = 6)
+      print(p)
+      dev.off()
+    }
+  )
+  
+  output$souris_sc_featureplot_subsystem_title <- renderUI({
+    subsel <- clicked_subsystem_sc()
+    req(subsel)
+    titleText <- paste0("FeaturePlot · subsystem: ", subsel, " (SC)")
+    tags$span(titleText)
+  })
+  
   output$souris_sc_featureplot_subsystem <- renderPlot({
     req(souris_sc_object())
     req(df_all_predictions())
@@ -3783,14 +4062,64 @@ server <- function(input, output, session) {
     }
 
     obj_sc$SOURIS_subsystem_score <- scores_scaled
-
-    p <- Seurat::FeaturePlot(
+    
+    p_list <- Seurat::FeaturePlot(
       obj_sc,
       features = "SOURIS_subsystem_score",
       split.by = "SOURIS_reference_group"
-    ) + scale_color_gradient2(low = "blue2", mid = "lavenderblush", high = "firebrick1", midpoint = 0.5, limits = c(0, 1))
-    p + patchwork::plot_annotation(
-      title = paste("Subsystem:", subsel)
+    ) 
+    
+    fix.sc <- scale_color_gradient2(
+      low = "blue2",
+      mid = "lavenderblush",
+      high = "firebrick1",
+      midpoint = 0.5,
+      limits = c(0,1),
+      name = "Subsystem score"
+    )
+    p_list <- lapply(
+      p_list,
+      function(x) {
+        x + fix.sc +
+          theme(
+            axis.title.y = element_blank(),
+            axis.title.x = element_blank()
+          )
+      }
+    )
+    
+    # use first panel as legend source
+    p_legend_src <- p_list[[1]] + theme(legend.position = "right")
+    
+    # extract legend grob
+    leg <- cowplot::get_legend(p_legend_src)
+    
+    # remove legends from actual panels
+    p_list_nl <- lapply(p_list, function(x) x + theme(legend.position = "none"))
+    
+    # combine panels (e.g. default grid layout)
+    p_panels <- cowplot::plot_grid(plotlist = p_list_nl)
+    
+    title_grob <- ggplot2::ggplot() +
+      ggplot2::annotate(
+        "text",
+        x = 0.5, y = 0.5,
+        label = subsel,
+        fontface = "bold",
+        size = 4
+      ) +
+      ggplot2::theme_void()
+    
+    cowplot::plot_grid(
+      title_grob,
+      cowplot::plot_grid(
+        p_panels,
+        leg,
+        ncol = 2,
+        rel_widths = c(1, 0.08)
+      ),
+      ncol = 1,
+      rel_heights = c(0.08, 0.92)
     )
   })
 
@@ -3837,11 +4166,11 @@ server <- function(input, output, session) {
                       style = 'display:flex; flex-direction:column; gap:2px;',
                       tags$div(
                         style = 'font-size:12px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase;',
-                        "FeaturePlot for selected reaction (SC)"
+                        uiOutput("souris_sc_featureplot_reaction_title")
                       ),
                       tags$div(
                         style = 'font-size:11px; color:#BBDEFB;',
-                        "Expression per reference group · single-cell"
+                        "Reaction activity per reference group · single-cell"
                       )
                     )
                   ),
@@ -3861,6 +4190,13 @@ server <- function(input, output, session) {
     }
   )
 
+  output$souris_sc_featureplot_reaction_title <- renderUI({
+    rxnlab <- clicked_reaction_sc()
+    req(rxnlab)
+    titleText <- paste0("FeaturePlot · reaction: ", rxnlab, " (SC)")
+    tags$span(titleText)
+  })
+  
   output$souris_sc_featureplot_reaction <- renderPlot({
     req(souris_sc_object())
     obj_sc <- souris_sc_object()[[1]]
@@ -3913,23 +4249,49 @@ server <- function(input, output, session) {
 
     rng <- range(obj_sc$SOURIS_reaction_score, na.rm = TRUE)
 
-    p <- Seurat::FeaturePlot(
+    p_list <- Seurat::FeaturePlot(
       obj_sc,
       features = "SOURIS_reaction_score",
       split.by = "SOURIS_reference_group"
-    ) +
-      ggplot2::scale_color_gradient2(
-        low = "blue2",
-        mid = "lavenderblush",
-        high = "firebrick1",
-        midpoint = median(rxn_scores, na.rm = TRUE),
-        limits = rng
-      ) +
-      patchwork::plot_annotation(
-        title = paste("Reaction:", rxnlab)
-      )
-
-    p
+    ) 
+    
+    fix.sc <- scale_color_gradient2(
+      low = "blue2",
+      mid = "lavenderblush",
+      high = "firebrick1",
+      midpoint = median(rxn_scores, na.rm = TRUE),
+      limits = rng,
+      name = rxnlab
+    )
+    p_list <- lapply(
+      p_list,
+      function(x) {
+        x + fix.sc +
+          theme(
+            axis.title.y = element_blank(),  # remove vertical SOURIS_reaction_score
+            axis.title.x = element_blank()   # optional: also remove x if desired
+          )
+      }
+    )
+    
+    # Use the first panel as legend source
+    p_legend_src <- p_list[[1]] + theme(legend.position = "right")
+    
+    # extract legend grob
+    leg <- cowplot::get_legend(p_legend_src)
+    
+    # remove legends from actual panels
+    p_list_nl <- lapply(p_list, function(x) x + theme(legend.position = "none"))
+    
+    # combine panels horizontally (or however you arrange them)
+    p_panels <- cowplot::plot_grid(plotlist = p_list_nl)
+    
+    cowplot::plot_grid(
+      p_panels,
+      leg,
+      ncol = 2,
+      rel_widths = c(1, 0.08)  # adjust legend column width as needed
+    )
   })
 }
 
