@@ -79,7 +79,7 @@ body <- dashboardBody(
       z-index: 2;
     }
 
-    ..sparkles {
+    .sparkles {
       position: fixed;
       inset: 0;
       pointer-events: none;
@@ -182,6 +182,12 @@ body <- dashboardBody(
     tags$style(HTML("
   .content-wrapper, .right-side {
     background-color: #f5f6fa;
+    overflow: visible;
+  }
+")),
+    tags$style(HTML("
+  .box, .box-body, .box-header {
+    overflow: visible !important;
   }
 ")),
     tags$style(HTML("
@@ -197,12 +203,14 @@ body <- dashboardBody(
     border-top-left-radius: 10px;
     border-top-right-radius: 10px;
     background-clip: padding-box;
+    overflow: visible;
   }
 
   .box-body {
     border-bottom-left-radius: 10px;
     border-bottom-right-radius: 10px;
     background-clip: padding-box;
+    overflow: visible;
   }
 ")),
     tags$style(HTML("
@@ -586,7 +594,7 @@ body <- dashboardBody(
             )
           ),
 
-          downloadLink("dlPlot1", "Download Plot as PDF"),
+          downloadLink("dlPlot1_obs", "Download Plot as PDF"),
           div(
             style = "margin-top: 10px;",
             downloadButton(
@@ -768,7 +776,7 @@ body <- dashboardBody(
             )
           ),
           
-          downloadLink("dlPlot1", "Download Plot as PDF"),
+          downloadLink("dlPlot1_exp", "Download Plot as PDF"),
           div(
             style = "margin-top: 10px;",
             downloadButton(
@@ -916,7 +924,7 @@ server <-function(input,output,session){
   error_exp            <- reactiveVal(NULL)
   customAUC_exp        <- reactiveVal(NULL)
   customFC_exp         <- reactiveVal(NULL)
-  customFDR_exp        <- reactiveVal(NULL)
+  customP_Value_exp        <- reactiveVal(NULL)
 
   radar_theme <- theme_minimal(base_family = "Poppins") +
     theme(
@@ -930,7 +938,7 @@ server <-function(input,output,session){
       legend.position  = "none"
     )
 
-  run_analysis <- function(AUC_cutoff, FC_cutoff, FDR_cutoff) {
+  run_analysis <- function(AUC_cutoff, FC_cutoff, P_Value_cutoff) {
 
   # ---- 0) Global checks ----
   if (length(errors_list()) > 0) {
@@ -994,7 +1002,7 @@ server <-function(input,output,session){
     )
   )
 
-  # ---- 2) ROC / t‑test / FDR loop per inner group ----
+  # ---- 2) ROC / t‑test / P_Value loop per inner group ----
   outer_select <- c("upper", "lower")
   inner_opts   <- unique(metaFinal[, inner])
 
@@ -1037,11 +1045,11 @@ server <-function(input,output,session){
 
     final <- cbind(t_col$mean.y, t_col$mean.x, short, t_col$statistic, t_col$pvalue)
     colnames(final) <- c("var_1_mean", "var_2_mean", "log2FC", "t_welch_statistic", "pval")
-    final <- subset(final, subset = pval < 0.05)
+    final <- subset(final, subset = pval < P_Value_cutoff)
 
-    final$fdr <- p.adjust(final$pval, method = "fdr")
-    final     <- subset(final, subset = fdr < FDR_cutoff)
-
+    #final$P_Value <- p.adjust(final$pval, method = "P_Value")
+    #View(final)
+    #final     <- subset(final, subset = P_Value < P_Value_cutoff)
     metab_names <- c(metab_names, rownames(final))
   }
 
@@ -1434,9 +1442,9 @@ server <-function(input,output,session){
         immediate = TRUE,
         ui = fluidRow(column(width=12,box(width=12,title="RADAR | xCheck Pre-Analysis Summary",solidHeader = TRUE, status="primary",
                                           box(width = 6, verbatimTextOutput('reportText')),
-                                          box(width = 6, noUiSliderInput(inputId = "customAUC", label = "AUC:", min = 0.6, max = 1.0, value = 0.65, tooltip = TRUE, step = 0.01),
+                                          box(width = 6, noUiSliderInput(inputId = "customAUC", label = "AUC:", min = 0, max = 1.0, value = 0.65, tooltip = TRUE, step = 0.01),
                                               noUiSliderInput(inputId = "customFC", label = "Log2FC:", min = 0, max = 5, value = 1, tooltip = TRUE, step = 0.01),
-                                              noUiSliderInput(inputId = "customFDR", label = "FDR:", min = 0, max = 1, value = 0.05, tooltip = TRUE, step = 0.01)),
+                                              noUiSliderInput(inputId = "customP_Value", label = "P_Value:", min = 0, max = 1, value = 0.05, tooltip = TRUE, step = 0.01)),
                                           fluidRow(column(width=12,actionButton("submitReport", "Begin Analysis (set parameters)")),column(width=12,actionButton("submitReportDefault", "Begin Analysis (p < 0.05 only)")))))
 
         )
@@ -1859,7 +1867,7 @@ server <-function(input,output,session){
           paste0("Inner Comparisons: ", inner(), "\n"),
           paste0("Minimum AUC: ", input$customAUC, "\n"),
           paste0("Minimum Log2FC: ", input$customFC, "\n"),
-          paste0("Maximum FDR: ", input$customFDR, "\n"),
+          paste0("Maximum P_Value: ", input$customP_Value, "\n"),
           paste0("Errors: ", paste(errors, collapse = "; "), "\n"),
           paste0("Report Generated at: ", Sys.time())
         )
@@ -1880,7 +1888,7 @@ server <-function(input,output,session){
       run_analysis(
         AUC_cutoff = input$customAUC,
         FC_cutoff  = input$customFC,
-        FDR_cutoff = input$customFDR
+        P_Value_cutoff = input$customP_Value
       )
       analysis_ready(TRUE)
     })
@@ -1896,7 +1904,7 @@ server <-function(input,output,session){
       run_analysis(
         AUC_cutoff = 0,
         FC_cutoff  = 0,
-        FDR_cutoff = 0.05
+        P_Value_cutoff = 0.05
       )
       analysis_ready(TRUE)
     })
@@ -1935,7 +1943,7 @@ server <-function(input,output,session){
       run_analysis(
         AUC_cutoff = input$customAUC_exp,
         FC_cutoff  = input$customFC_exp,
-        FDR_cutoff = input$customFDR_exp
+        P_Value_cutoff = input$customP_Value_exp
       )
       analysis_ready_exp(TRUE)
     })
@@ -1974,7 +1982,7 @@ server <-function(input,output,session){
       run_analysis(
         AUC_cutoff = 0,
         FC_cutoff  = 0,
-        FDR_cutoff = 0.05
+        P_Value_cutoff = 0.05
       )
       analysis_ready_exp(TRUE)
     })
@@ -2194,14 +2202,14 @@ server <-function(input,output,session){
     output$reacts_obs <- downloadHandler(
       filename = "(enter name for fingerprint preparation object).rds",
       content = function(file) {
-        saveRDS(list(metabs_fin(),metaFinal_out(),data.frame(AUC=input$customAUC,Log2FC=input$customFC,FDR=input$customFDR),"cohort",list(upper_label_rv(),lower_label_rv()),list(unique(metabs_fin()$inner_comparison))),file)
+        saveRDS(list(metabs_fin(),metaFinal_out(),data.frame(AUC=input$customAUC,Log2FC=input$customFC,P_Value=input$customP_Value),"cohort",list(upper_label_rv(),lower_label_rv()),list(unique(metabs_fin()$inner_comparison))),file)
       }
     )
 
     output$reacts_exp <- downloadHandler(
       filename = "(enter name for fingerprint preparation object).rds",
       content = function(file) {
-        saveRDS(list(metabs_fin(),metaFinal_out(),data.frame(AUC=input$customAUC,Log2FC=input$customFC,FDR=input$customFDR),"experiment",list(top_exp(),bottom_exp()),list(unique(metabs_fin()$inner_comparison))),file)
+        saveRDS(list(metabs_fin(),metaFinal_out(),data.frame(AUC=input$customAUC,Log2FC=input$customFC,P_Value=input$customP_Value),"experiment",list(top_exp(),bottom_exp()),list(unique(metabs_fin()$inner_comparison))),file)
       }
     )
     
@@ -2217,32 +2225,59 @@ server <-function(input,output,session){
     })
 
 
-    output$dlPlot1 <- downloadHandler(
+    output$dlPlot1_obs <- downloadHandler(
       filename = function() {
-        paste('all_subsystems.pdf', sep='')
+        'all_subsystems.pdf'
       },
       content = function(file) {
         withProgress(message = 'Generating PDF', value = 0, {
           incProgress(0.3, detail = "Preparing data")
-
-          pdf(file, width = 11, height = 8.5)  # Standard letter size
-
-          # Plot or write your content to the PDF here
-          # For example:
-          plot(plot1pdf())
-          # Add more plots or text as needed
-
+          
+          p <- plot1_combined()  # Get the ggplot object
+          
           incProgress(0.3, detail = "Creating PDF")
-
-          # Close the PDF device
-          dev.off()
-
+          
+          ggsave(
+            filename = file,
+            plot = p,
+            width = 11,
+            height = 8.5,
+            units = "in",
+            dpi = 300
+          )
+          
           incProgress(0.4, detail = "Finalizing")
         })
       },
       contentType = "application/pdf"
     )
 
+    output$dlPlot1_exp <- downloadHandler(
+      filename = function() {
+        'all_subsystems.pdf'
+      },
+      content = function(file) {
+        withProgress(message = 'Generating PDF', value = 0, {
+          incProgress(0.3, detail = "Preparing data")
+          
+          p <- plot1_combined()  # Get the ggplot object
+          
+          incProgress(0.3, detail = "Creating PDF")
+          
+          ggsave(
+            filename = file,
+            plot = p,
+            width = 11,
+            height = 8.5,
+            units = "in",
+            dpi = 300
+          )
+          
+          incProgress(0.4, detail = "Finalizing")
+        })
+      },
+      contentType = "application/pdf"
+    )
     ## 1) Subsystem index from clicking plot1 (Plotly)
     selected_subsystem_index <- reactive({
       req(input$main_tabs == "obs")
@@ -2593,31 +2628,50 @@ server <-function(input,output,session){
         if (nrow(sub) == 0) {
           return(p_box)
         }
-        r_val <- suppressWarnings(cor(sub$outer_cont, sub[[flux_col]], use = "complete.obs"))
+        n_val <- nrow(sub)
+        r_val <- suppressWarnings(cor(
+          sub$outer_cont, sub[[flux_col]],
+          use = "complete.obs", method = "spearman"
+        ))
         p_corr <- ggplot(sub, aes(x = outer_cont, y = .data[[flux_col]])) +
           geom_point(alpha = 0.55, size = 1.5, color = "#3949ab") +
           geom_smooth(method = "lm", se = FALSE, color = "#ef6c00", size = 0.7) +
           xlab(cont_name) +
           ylab(flux_col) + radar_theme +
           ggtitle(
-            paste0("Correlation across full cohort (r = ",
-                   sprintf("%.2f", r_val), ")")
+            paste0(
+              "Correlation across selected samples (rho = ",
+              sprintf("%.2f", r_val),
+              ", n = ", n_val, ")"
+            )
           )
       } else {
         inner_levels <- sort(unique(df$inner))
         corr_plots <- lapply(inner_levels, function(lv) {
-          sub <- df[df$inner == lv & !is.na(df$outer_cont) & !is.na(df[[flux_col]]), ]
+          sub <- df[
+            df$inner == lv &
+              !is.na(df$outer_cont) &
+              !is.na(df[[flux_col]]),
+          ]
           if (nrow(sub) == 0) {
             return(ggplot() + ggtitle(paste("No data for", lv)))
           }
-          r_val <- suppressWarnings(cor(sub$outer_cont, sub[[flux_col]], use = "complete.obs"))
+          n_val <- nrow(sub)
+          r_val <- suppressWarnings(cor(
+            sub$outer_cont, sub[[flux_col]],
+            use = "complete.obs", method = "spearman"
+          ))
           ggplot(sub, aes(x = outer_cont, y = .data[[flux_col]])) +
             geom_point(alpha = 0.55, size = 1.5, color = "#3949ab") +
             geom_smooth(method = "lm", se = FALSE, color = "#ef6c00", size = 0.7) +
             xlab(cont_name) +
             ylab(flux_col) +
             ggtitle(
-              paste0(inner_name, " = ", lv, " (r = ", sprintf("%.2f", r_val), ")")
+              paste0(
+                inner_name, " = ", lv,
+                " (rho = ", sprintf("%.2f", r_val),
+                ", n = ", n_val, ")"
+              )
             )
         })
         p_corr <- cowplot::plot_grid(plotlist = corr_plots, ncol = 1)
@@ -2831,21 +2885,43 @@ server <-function(input,output,session){
     
 
     output$dlplot2_obs <- downloadHandler(
-      filename = function() {
-        paste(input$boxplot,'_',label, '.pdf', sep='')
-      },
+      filename = function() "flux_boxplot.pdf",
       content = function(file) {
-        ggsave(file, plot2_obs(), width = 12, height = 8, dpi = 400, units = "in")
-      }
+        p <- try(plot2_obs(), silent = TRUE)
+        if (inherits(p, "try-error") || is.null(p)) {
+          p <- ggplot() + ggtitle("No data available")
+        }
+        ggplot2::ggsave(
+          filename = file,
+          plot     = p,
+          width    = 21,
+          height   = 10.5,
+          units    = "in",
+          dpi      = 300,
+          device   = cairo_pdf   # more robust on many systems
+        )
+      },
+      contentType = "application/pdf"
     )
     
     output$dlplot2_exp <- downloadHandler(
-      filename = function() {
-        paste(input$boxplot,'_',label, '.pdf', sep='')
-      },
+      filename = function() "flux_boxplot.pdf",
       content = function(file) {
-        ggsave(file, plot2_exp(), width = 12, height = 8, dpi = 400, units = "in")
-      }
+        p <- try(plot2_exp(), silent = TRUE)
+        if (inherits(p, "try-error") || is.null(p)) {
+          p <- ggplot() + ggtitle("No data available")
+        }
+        ggplot2::ggsave(
+          filename = file,
+          plot     = p,
+          width    = 21,
+          height   = 10.5,
+          units    = "in",
+          dpi      = 300,
+          device   = cairo_pdf   # more robust on many systems
+        )
+      },
+      contentType = "application/pdf"
     )
 
     observeEvent(input$experiment_select, {
@@ -3080,10 +3156,10 @@ server <-function(input,output,session){
               column(
                 width = 6,
                 noUiSliderInput("customAUC_exp", "AUC",   ### CHANGED
-                                min = 0.6, max = 1.0, value = 0.65, step = 0.01),
+                                min = 0, max = 1.0, value = 0.65, step = 0.01),
                 noUiSliderInput("customFC_exp", "Log2FC", ### CHANGED
                                 min = 0, max = 5, value = 1, step = 0.01),
-                noUiSliderInput("customFDR_exp", "FDR",   ### CHANGED
+                noUiSliderInput("customP_Value_exp", "P_Value",   ### CHANGED
                                 min = 0, max = 1, value = 0.05, step = 0.01)
               ),
               fluidRow(
@@ -3223,7 +3299,7 @@ server <-function(input,output,session){
             paste0("Inner Variables: ", paste(innerVars_exp(), collapse = ", ")),
             paste0("Minimum AUC: ", input$customAUC_exp),
             paste0("Minimum Log2FC: ", input$customFC_exp),
-            paste0("Maximum FDR: ", input$customFDR_exp),
+            paste0("Maximum P_Value: ", input$customP_Value_exp),
             paste0("Errors: ", if (length(errors) == 0) "NONE" else paste(errors, collapse = "; ")),
             paste0("Report Generated at: ", Sys.time()),
             sep = "\n"
