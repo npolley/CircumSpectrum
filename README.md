@@ -50,7 +50,10 @@
 >
 > ### CPLEX and Rcplex
 >
-> The iMAT calibration workflows use the IBM CPLEX solver via the `Rcplex` R package.
+> The iMAT calibration workflows use the IBM CPLEX solver via the `Rcplex2` R package from the RuppinLab GitHub repository, which extends the original CRAN Rcplex interface.
+>
+> **Important:** Only the **commerical** IBM ILOG CPLEX Optimization Studio (available free for academic accounts) has the necessary capabilities to run the iMAT flux 
+> calibration at scale; the Community Edition is not sufficient.
 >
 > #### Installing IBM CPLEX Optimization Studio
 >
@@ -58,13 +61,8 @@
 >
 > **Academic use (free):**
 >
-> - Register via IBM’s academic / SkillsBuild portal and request access to IBM ILOG CPLEX Optimization Studio.
+> - Register via IBM’s academic or SkillsBuild portal and request access to IBM ILOG CPLEX Optimization Studio (select the full Commercial Edition, not the Community Edition).
 > - Download the installer for your platform and follow IBM’s installation instructions.
->
-> **Non‑academic / production use:**
->
-> - See the product page:  
->   https://www.ibm.com/products/ilog-cplex-optimization-studio
 >
 > On clusters, CPLEX is often provided as a module, for example:
 >
@@ -74,30 +72,35 @@
 >
 > Check your cluster documentation for the correct module name and version.
 >
+> Make a note of your CPLEX installation directory (e.g. CPLEX_STUDIO_DIR), as you will need it when installing Rcplex2.
+>
 > #### Installing the Rcplex R interface
 >
-> Once CPLEX is installed and visible in your environment, you can install the R interface using:
+> Once the professional CPLEX Optimization Studio is installed and visible in your environment, install Rcplex2 directly from the RuppinLab GitHub repository:
 >
-> ```r
-> source("src/install_cplex_rcplex.R")
+> ```bash
+> git clone https://github.com/ruppinlab/Rcplex2.git
 > ```
 >
-> This script:
->
-> - Checks for common CPLEX environment variables (e.g. `CPLEX_STUDIO_DIR`, `CPLEX_STUDIO_LIB`, `CPLEX_PATH`).
-> - Installs Rcplex dependencies (e.g. `slam`, `Matrix`) if needed.
-> - Attempts to install `Rcplex` from source and prints hints if compilation fails.
->
-> If Rcplex fails to compile:
->
-> - Ensure the CPLEX module is loaded (`module load cplex`), with include and library paths correctly set.
-> - If your site provides a prebuilt Rcplex tarball, you can install it manually, for example:
->
-> ```r
-> install.packages("Rcplex_0.3-6.tar.gz", repos = NULL, type = "source")
+> Export <cplex_dir> to the parent directory that contains the cplex folder, for example:
+> 
+> ```bash
+> export cplex_dir="/home/you/ibm/ILOG/CPLEX_Studio1210"
 > ```
 >
-> Consult your cluster documentation or admins for site-specific details on CPLEX and Rcplex deployment.
+> From root directory, run:
+>
+> ```bash
+> R CMD INSTALL \
+>  --configure-args="PKG_CFLAGS='-fPIC -m64 -fno-strict-aliasing' \
+>    PKG_CPPFLAGS=-I${cplex_dir}/cplex/include \
+>    PKG_LIBS='-L${cplex_dir}/cplex/lib/x86-64_linux/static_pic \
+>    -lcplex -lm -lpthread'" \
+>  Rcplex2
+> ```
+>
+> If installation fails (e.g. issues related to CPXversion or missing headers/libraries), consult the inst/INSTALL file in the Rcplex2 repository and your system/cluster
+> documentation; some HPC systems provide preconfigured modules or prebuilt Rcplex2 binaries.
 >
 > ---
 >
