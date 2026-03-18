@@ -12,7 +12,7 @@
 >   The framework provides the following modules and associated datasets, with both TUI and GUI executables so you can start at any stage of the pipeline.
 > </p>
 >
-> # Module Descriptions
+> ## Module Descriptions
 >
 > <p align="center">
 >   <img src="img/overview.jpeg" alt="CircumSpectrum module overview" width="720">
