@@ -51,7 +51,7 @@ The main entry point is:
   - Loads R and runs:
     - `Rscript fingerprint_generator_2.R "$OBJ"`.
 
-- `mlp_fingerprint_generator_1.sh`  
+- `fingerprint_generator_1.sh`  
   - Alternative SLURM launcher for `fingerprint_generator_1.R` (without explicit `OBJ`, array index only), kept for manual or experimental runs.
 
 ---
