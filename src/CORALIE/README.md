@@ -5,7 +5,7 @@
  <h1 align="center">CORALIE</h1>
 
  <p align="center">
-    CORALIE (Correlation of Reaction Activities Localized in Experiments) is an interactive Shiny application for multi-tier exploration of metabolic fingerprints and related features. It is organized around a single **Analysis Interface** that exposes three tiers of comparison: cohort-level fingerprints, pairwise subsystem correlations, and reaction-level drill-downs.
+    CORALIE (Correlation of Reaction Activities Localized in Experiments) is an interactive Shiny application for multi-tier exploration of metabolic fingerprints and related features. It is organized around a single analysis interface that exposes three tiers of comparison: phenotype-level fingerprints, pairwise subsystem correlations, and reaction-level drill-downs.
  </p>
 
 ---
@@ -20,18 +20,17 @@
    - `bash CORALIE_gui.sh`, or  
    - `Rscript CORALIE.R` (or `shiny::runApp("CORALIE.R")` from R).  
 4. Open the URL printed in the console if your browser does not open automatically.  
-5. In the sidebar, select **Analysis Interface** (Tier 1 by default), then move through tiers as needed.
 
 ## Tier 1 – Compare fingerprints to a reference
 
-Use Tier 1 to compare multiple fingerprints (e.g. cohorts, conditions, timepoints) against a common reference assay.
+Use Tier 1 to compare multiple fingerprints (e.g. cohorts, conditions, timepoints) within a common reference assays.
 
 Typical workflow:
 
 1. **Select reference assay**  
-   - Choose the fingerprint that will serve as the reference (e.g. a control cohort or baseline condition).  
+   - Choose flux assays that will serve as the reference(s) (e.g. a control cohort or baseline condition).  
 2. **Select comparison fingerprints**  
-   - Pick two or more additional fingerprints to compare against the reference.  
+   - Pick two or more additional fingerprints to compare against the reference assay(s).  
 3. **Configure display options**  
    - Choose whether to visualize differences at the subsystem level, aggregate metrics, or other summary views exposed in the UI.  
 4. **Generate plots**  
@@ -49,7 +48,7 @@ Typical workflow:
 1. **Choose two fingerprints**  
    - Select an intersecting pair of fingerprints from the interactive Tier 1 correlation plot for detailed comparison.  
 2. **Select display features**  
-   - Optionally filter to specific subsystem models significant to phenotypic output in reference assay. Select hierarchical clustering or diagonal optimisation.  
+   - Optionally, filter to specific subsystem models that are significant to phenotypic output in the reference assay. Then choose either hierarchical clustering or diagonal optimization. To localize common subsystems, diagonal optimization is recommended, along with isolating only correlations *greater than* a chosen threshold using the scroll bar. Likewise, hierarchical clustering is useful for identifying diverging subsystem effects, especially when isolating correlations *less than* a selected threshold.
 3. **Compute and visualize correlations**  
    - CORALIE calculates correlations between subsystem-level fingerprint features of the two fingerprints and plots them.  
 4. **Interpret correlations**  
@@ -68,13 +67,14 @@ Typical workflow:
 2. **Compute correlations**  
    - CORALIE computes correlations between each reaction’s flux and the overall subsystem fingerprint scores across samples of the reference assay.  
 3. **Visualize and interpret**  
-   - View reaction-level correlation plots and/or tables that show which reactions are most strongly associated with subsystem-level changes.  
+   - View reaction-level correlation plots and/or tables that show which reactions are most strongly associated with subsystem-level changes.
+   - Blue indicates reactions that are more active in respect to the phenotypic subsystem model, while red indicates declining reactions.
    - Use this information to connect subsystem-level signatures back to concrete reactions that may drive or report the observed patterns.  
 
-Use Tier 3 as a mechanistic drill-down, translating subsystem fingerprints into interpretable reaction-level hypotheses.
+Use Tier 3 as a mechanistic drill-down, translating subsystem-level fingerprints into interpretable reaction-level hypotheses.
 
 ## General tips
 
 - Progress and heavier computations are accompanied by a CORALIE-branded loading overlay with a logo and progress bar. Wait for the overlay to disappear before interacting with updated plots and controls.  
-- You can typically move back and forth between tiers without restarting the app; previous selections often serve as context for deeper tiers.  
+- You can typically move back and forth between tiers without restarting the app; previous selections serve as context for deeper tiers.  
 - When building figures for reports or presentations, use Tier 1 for global overviews, Tier 2 for concise pairwise comparisons, and Tier 3 for mechanistic detail at the reaction level.
