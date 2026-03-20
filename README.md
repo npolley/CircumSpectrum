@@ -5,7 +5,10 @@
 > <h1 align="center">CircumSpectrum</h1>
 >
 > <p align="center">
->   CircumSpectrum is a flux-based framework in R that converts bulk and single-cell RNA-seq data into metabolic fingerprints using genome-scale models and machine learning. It includes RADAR, SOURIS, and CORALIE modules for reaction-level, cross-cohort, and multi-tier correlation analyses.
+>   CircumSpectrum is an R-based framework that transforms bulk and single-cell RNA-seq data into flux-oriented metabolic fingerprints through the integration of genome-scale 
+> models and machine learning. It comprises three modules—RADAR, SOURIS, and CORALIE—designed for differential flux analysis, cross-cohort phenotypic comparisons, and multi-tier 
+> correlation analyses, respectively. 
+> Detailed usage instructions for each module are provided in the README files located within their corresponding subdirectories.
 > </p>
 >
 > <p align="center">
