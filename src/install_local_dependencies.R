@@ -19,6 +19,9 @@ required_packages <- c(
   "reactable",
   "cowplot",
   "data.table",
+  "caret",
+  "RSNNS",
+  "heatmaply",
   "MatrixGenerics"
 )
 
